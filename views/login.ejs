@@ -13,8 +13,14 @@
                 <label for="api_key">API Key:</label>
                 <input type="text" id="api_key" name="api_key" required>
                 <button type="submit">Login</button>
+                
             </div>            
         </form>
+        
+<% if (error) { %>
+ <p style="color: red; margin-top: 1rem;"><%= error %></p>
+<% } %>
+        
     </div>
 </body>
 </html>

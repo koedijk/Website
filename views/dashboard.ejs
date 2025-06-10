@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Dashboard</title>
@@ -9,23 +10,28 @@
             padding: 2rem;
             background-color: #f4f4f4;
         }
+
         .dashboard {
             background: white;
             padding: 2rem;
             border-radius: 8px;
             max-width: 600px;
             margin: auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             color: #333;
         }
+
         p {
             margin: 0.5rem 0;
         }
+
         .logout {
             margin-top: 2rem;
         }
+
         .logout a {
             color: white;
             background-color: #d9534f;
@@ -33,18 +39,56 @@
             text-decoration: none;
             border-radius: 4px;
         }
+
+        button {
+            margin-left: 1rem;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <h1>Welcome to Your Dashboard</h1>
-        <p><strong>Name:</strong> <%= tornName %></p>
-        <p><strong>Torn ID:</strong> <%= tornId %></p>
-        <p><strong>Faction ID:</strong> <%= factionId %></p>
-        <p><strong>API Key:</strong> <%= apiKey %></p>
+        <p><strong>Name:</strong>
+            <%= tornName %>
+        </p>
+        <p><strong>Torn ID:</strong>
+            <%= tornId %>
+        </p>
+        <p><strong>Faction ID:</strong>
+            <%= factionId %>
+        </p>
+        <p>
+            <strong>API Key:</strong>
+            <span id="apiKey">••••••••••••••••</span>
+            <button onclick="toggleApiKey()">Show</button>
+        </p>
         <div class="logout">
             <a href="/auth/logout">Logout</a>
         </div>
     </div>
+
+    <script>
+        const actualKey = "<%= apiKey %>";
+        let isVisible = false;
+
+        function toggleApiKey() {
+            const keySpan = document.getElementById('apiKey');
+            const button = event.target;
+
+            if (isVisible) {
+                keySpan.textContent = '••••••••••••••••';
+                button.textContent = 'Show';
+            } else {
+                keySpan.textContent = actualKey;
+                button.textContent = 'Hide';
+            }
+
+            isVisible = !isVisible;
+        }
+    </script>
 </body>
+
 </html>

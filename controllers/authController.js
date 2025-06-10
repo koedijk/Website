@@ -3,9 +3,11 @@ const db = require('../models/db');
 const apicalls = require('../calls/apicalls');
 
 // Render login page
+
 exports.getLogin = (req, res) => {
-    res.render('login');
+ res.render('login', { error: null });
 };
+
 
 // Handle login form submission
 exports.postLogin = async (req, res) => {
@@ -15,7 +17,11 @@ exports.postLogin = async (req, res) => {
         // Check if API key is allowed
         const allowed = await new Promise((resolve, reject) => {
             db.query('SELECT * FROM allowedfaction WHERE api_key = ?', [api_key], (err, results) => {
-                if (err || results.length === 0) return reject('Access Denied');
+
+                if (err || results.length === 0) {
+                    return res.render('login', { error: 'Access Denied' });
+                }
+
                 resolve(results[0]);
             });
         });
@@ -108,6 +114,6 @@ exports.logout = (req, res) => {
             return res.status(500).send('Logout failed');
         }
         res.clearCookie('connect.sid');
-        res.render('login');
+        res.render('login', { error: null }); 
     });
 };
