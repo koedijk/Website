@@ -16,4 +16,8 @@ router.post('/logout', authController.logout);
 // Protected dashboard route
 router.get('/dashboard', ensureAuthenticated, authController.getDashboard);
 
+router.post('/claim', authController.claim);
+router.post('/cancel-claim', authController.cancelClaim);
+
+
 module.exports = router;

@@ -5,7 +5,7 @@ const apicalls = require('../calls/apicalls');
 // Render login page
 
 exports.getLogin = (req, res) => {
- res.render('login', { error: null });
+    res.render('login', { error: null });
 };
 
 
@@ -93,23 +93,57 @@ function handleLogin(req, res, playername, factionid, tornid, apiKey) {
 }
 
 // Render dashboard
+
+
+let enemyClaims = {}; // In-memory store for claims
+
 exports.getDashboard = async (req, res) => {
     if (!req.session || !req.session.apiKey) {
         return res.redirect('/auth/login');
     }
 
+    try {
+        const members = await apicalls.getFactionMembers(req.session.apiKey);
 
-const members = await apicalls.getFactionMembers(req.session.apiKey);
+        // Dummy enemy data
+        const enemyMembers = [
+            { name: 'EnemyOne', status: 'Active', claimedBy: enemyClaims['EnemyOne'] || null },
+            { name: 'EnemyTwo', status: 'Hospital', claimedBy: enemyClaims['EnemyTwo'] || null },
+            { name: 'EnemyThree', status: 'Jail', claimedBy: enemyClaims['EnemyThree'] || null }
+        ];
 
-res.render('dashboard', {
- apiKey: req.session.apiKey || 'Unknown',
- factionId: req.session.factionId || 'Unknown',
- tornName: req.session.tornName || 'Unknown',
- tornId: req.session.tornId || 'Unknown',
- members: members || {}
-});
-
+        res.render('dashboard', {
+            tornName: req.session.tornName || 'Unknown',
+            tornId: req.session.tornId || 'Unknown',
+            factionId: req.session.factionId || 'Unknown',
+            members: members || {},
+            enemyMembers
+        });
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.status(500).send('Failed to load dashboard');
+    }
 };
+
+
+exports.claim = (req, res) => {
+    const { name } = req.body;
+    if (name && req.session.tornName) {
+        enemyClaims[name] = req.session.tornName;
+    }
+    res.redirect('/auth/dashboard');
+};
+
+exports.cancelClaim = (req, res) => {
+    const { name } = req.body;
+    if (name) {
+        delete enemyClaims[name];
+    }
+    res.redirect('/auth/dashboard');
+};
+
+
+
 
 // Handle logout
 exports.logout = (req, res) => {
@@ -119,6 +153,6 @@ exports.logout = (req, res) => {
             return res.status(500).send('Logout failed');
         }
         res.clearCookie('connect.sid');
-        res.render('login', { error: null }); 
+        res.render('login', { error: null });
     });
 };
