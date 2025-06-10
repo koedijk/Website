@@ -7,7 +7,6 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = 3000;
-
 // MySQL connection
 const db = mysql.createConnection({
     host: '127.0.0.1',
@@ -33,7 +32,7 @@ app.use(session({
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 60000 }
+    cookie: { maxAge: 30 * 60 * 1000 }
 }));
 
 app.use(express.urlencoded({ extended: true }));
