@@ -13,5 +13,11 @@ checkApi: async function(apikey) {
 basicInfo: async function(apikey) {   
          const response = await axios.get(`https://api.torn.com/user/?selections=basic&key=${apikey}`);                 
         return response.data;
+},
+
+getFactionMembers: async function(apikey) {
+        const response = await axios.get(`https://api.torn.com/faction/?selections=basic&key=${apikey}`);
+        return response.data.members;
 }
+
 }

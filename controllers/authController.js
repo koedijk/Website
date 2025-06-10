@@ -93,17 +93,22 @@ function handleLogin(req, res, playername, factionid, tornid, apiKey) {
 }
 
 // Render dashboard
-exports.getDashboard = (req, res) => {
+exports.getDashboard = async (req, res) => {
     if (!req.session || !req.session.apiKey) {
         return res.redirect('/auth/login');
     }
 
-    res.render('dashboard', {
-        apiKey: req.session.apiKey || 'Unknown',
-        factionId: req.session.factionId || 'Unknown',
-        tornName: req.session.tornName || 'Unknown',
-        tornId: req.session.tornId || 'Unknown'
-    });
+
+const members = await apicalls.getFactionMembers(req.session.apiKey);
+
+res.render('dashboard', {
+ apiKey: req.session.apiKey || 'Unknown',
+ factionId: req.session.factionId || 'Unknown',
+ tornName: req.session.tornName || 'Unknown',
+ tornId: req.session.tornId || 'Unknown',
+ members: members || {}
+});
+
 };
 
 // Handle logout
