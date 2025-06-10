@@ -40,6 +40,7 @@ button {
     color: #fff;
     border: none;
     cursor: pointer;
+    margin-top: 0.5rem
 }
 
 button:hover {
