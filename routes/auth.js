@@ -16,8 +16,11 @@ router.post('/logout', authController.logout);
 // Protected dashboard route
 router.get('/dashboard', ensureAuthenticated, authController.getDashboard);
 
+// Claim routes
 router.post('/claim', authController.claim);
 router.post('/cancel-claim', authController.cancelClaim);
 
+// Real-time enemy status update route
+router.post('/fetch-enemy-live', ensureAuthenticated, authController.fetchEnemyLive);
 
 module.exports = router;

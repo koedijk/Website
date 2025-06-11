@@ -1,60 +1,102 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
     padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 2rem;
 }
 
-.container {
-    width: 300px;
-    margin: 100px auto;
-    padding: 20px;
-    background-color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-h2 {
-    margin-bottom: 20px;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-input[type="text"],
-input[type="password"] {
+.dashboard {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 1000px;
     width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+}
+
+h1, h2 {
+    color: #333;
+    text-align: center;
+}
+
+p {
+    margin: 0.5rem 0;
+}
+
+.logout {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.logout a {
+    color: white;
+    background-color: #d9534f;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.logout a:hover {
+    background-color: #c9302c;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f8f8f8;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
 }
 
 button {
-    width: 100%;
-    padding: 10px;
+    padding: 0.5rem;
     background-color: #007bff;
-    color: #fff;
+    color: white;
     border: none;
+    border-radius: 4px;
     cursor: pointer;
-    margin-top: 0.5rem
+    margin-left: 1rem;
+    transition: background-color 0.3s ease;
 }
 
 button:hover {
     background-color: #0056b3;
 }
 
-a {
-    display: block;
-    margin-top: 20px;
-    text-align: center;
-    color: #007bff;
-    text-decoration: none;
+.api-key-container {
+    display: flex;
+    align-items: center;
 }
 
-a:hover {
+.war-toggle {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.war-toggle a {
+    margin: 0 10px;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.war-toggle a:hover {
     text-decoration: underline;
 }

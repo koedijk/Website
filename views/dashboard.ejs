@@ -4,95 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .dashboard {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            max-width: 800px;
-            width: 100%;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        }
-
-        h1,
-        h2 {
-            color: #333;
-            text-align: center;
-        }
-
-        p {
-            margin: 0.5rem 0;
-        }
-
-        .logout {
-            margin-top: 2rem;
-            text-align: center;
-        }
-
-        .logout a {
-            color: white;
-            background-color: #d9534f;
-            padding: 0.5rem 1rem;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background-color 0.3s ease;
-        }
-
-        .logout a:hover {
-            background-color: #c9302c;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        th,
-        td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        th {
-            background-color: #f8f8f8;
-        }
-
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        button {
-            padding: 0.5rem;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 1rem;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .api-key-container {
-            display: flex;
-            align-items: center;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css"> <!-- Ensure this path is correct -->
 </head>
 
 <body>
@@ -138,7 +50,14 @@
             </tbody>
         </table>
 
-        <h2>Enemy Faction</h2>
+        <p style="text-align: center; margin-top: 1rem; color: #666;">
+            Showing: <strong>
+                <%= warType==='last' ? 'Last War' : 'Current War' %>
+            </strong>
+        </p>
+
+        <h2>Enemy Faction: <%= enemyFactionName %>
+        </h2>
         <table>
             <thead>
                 <tr>
@@ -153,9 +72,15 @@
                         <td>
                             <%= member.name %>
                         </td>
+
                         <td>
-                            <%= member.status %>
+                            <%= member.status || 'Unknown' %>
+                                <% if ((member.status==='Hospital' || member.status==='Jail' ) && member.statusUntil) {
+                                    %>
+                                    (<span class="countdown" data-until="<%= member.statusUntil %>"></span>)
+                                    <% } %>
                         </td>
+
                         <td>
                             <% if (member.claimedBy) { %>
                                 <%= member.claimedBy %>
@@ -175,11 +100,51 @@
             </tbody>
         </table>
 
+        <div style="text-align: center; margin-top: 2rem;">
+            <button onclick="updateEnemyStatus()">Update Enemy Status</button>
+            <p id="updateStatus" style="margin-top: 1rem; color: #555;"></p>
+        </div>
 
         <div class="logout">
             <a href="/auth/logout">Logout</a>
         </div>
     </div>
+
+    <script>
+        function updateCountdowns() {
+            const now = Math.floor(Date.now() / 1000);
+            document.querySelectorAll('.countdown').forEach(el => {
+                const until = parseInt(el.dataset.until, 10);
+                const secondsLeft = Math.max(0, until - now);
+                const minutes = Math.floor(secondsLeft / 60);
+                const seconds = secondsLeft % 60;
+                el.textContent = `${minutes}m ${seconds}s left`;
+            });
+        }
+
+        function updateEnemyStatus() {
+            const statusEl = document.getElementById('updateStatus');
+            statusEl.textContent = 'Updating...';
+
+            fetch('/auth/fetch-enemy-live', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            }).then(res => {
+                if (res.ok) {
+                    statusEl.textContent = 'Enemy status updated.';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    statusEl.textContent = 'Failed to update.';
+                }
+            }).catch(() => {
+                statusEl.textContent = 'Error occurred.';
+            });
+        }
+
+        updateCountdowns();
+        setInterval(updateCountdowns, 100);
+    </script>
 </body>
 
 </html>
