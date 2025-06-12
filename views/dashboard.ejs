@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,9 +7,10 @@
 </head>
 <body>
   <div class="dashboard">
-    <p id="lastUpdated" style="text-align: right; font-size: 0.9rem; color: #666;">
+    <p id="lastUpdated" style="text-align:right; font-size:0.9rem; color:#666;">
       Last updated: <span id="updateTime">-</span>
     </p>
+
     <h1>Welcome to Your Dashboard</h1>
     <p><strong>Name:</strong> <%= tornName %></p>
     <p><strong>Torn ID:</strong> <%= tornId %></p>
@@ -34,8 +34,8 @@
                 <td><%= member.name %></td>
                 <td class="status"><%= member.status.description %></td>
                 <td class="timer">
-                  <% if (['Hospital', 'Jail'].includes(member.status.description)) { %>
-                    <span class="countdown" data-until="<%= Math.floor(new Date(member.status.until).getTime() / 1000) %>"></span>
+                  <% if (['Hospital', 'Jail'].includes(member.status.description) && member.statusUntil) { %>
+                    <span class="countdown" data-until="<%= member.statusUntil %>"></span>
                   <% } else { %>-<% } %>
                 </td>
               </tr>
@@ -82,9 +82,9 @@
       </div>
     </div>
 
-    <div style="text-align: center; margin-top: 2rem;">
+    <div style="text-align:center; margin-top:2rem;">
       <button type="button" onclick="updateEnemyStatus()">Update Enemy Status</button>
-      <p id="updateStatus" style="margin-top: 1rem; color: #555;"></p>
+      <p id="updateStatus" style="margin-top:1rem; color:#555;"></p>
     </div>
 
     <div class="logout">
@@ -102,7 +102,7 @@
         if (row) {
           row.querySelector('.status').textContent = member.status;
           const timerCell = row.querySelector('.timer');
-          if (['Hospital', 'Jail'].includes(member.status)) {
+          if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
             timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
           } else {
             timerCell.textContent = '-';
@@ -120,6 +120,50 @@
       updateDOM('tr', updates);
       document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
     });
+
+socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
+  const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
+  const row = document.querySelector(`tr[data-name="${safeId}"]`);
+  if (!row) return;
+
+  // Update claim cell
+  const claimCell = row.querySelector('.enemy-action');
+  if (claimCell) {
+    if (claimedBy) {
+      claimCell.innerHTML = `
+        ${claimedBy}
+        <form method="POST" action="/auth/cancel-claim">
+          <input type="hidden" name="name" value="${name}">
+          <button type="submit">Cancel</button>
+        </form>
+      `;
+    } else {
+      claimCell.innerHTML = `
+        <form method="POST" action="/auth/claim">
+          <input type="hidden" name="name" value="${name}">
+          <button type="submit">Claim</button>
+        </form>
+      `;
+    }
+  }
+
+  // Update status cell
+  const statusCell = row.querySelector('.status');
+  if (statusCell && status) {
+    statusCell.textContent = status;
+  }
+
+  // Update timer cell
+  const timerCell = row.querySelector('.timer');
+  if (timerCell) {
+    if (['Hospital', 'Jail'].includes(status) && statusUntil) {
+      timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
+    } else {
+      timerCell.textContent = '-';
+    }
+  }
+});
+
 
     function updateCountdowns() {
       const now = Math.floor(Date.now() / 1000);
@@ -157,7 +201,6 @@
       document.getElementById('updateTime').textContent = now.toLocaleTimeString();
     }
 
-    // Call it every 10 seconds
     setInterval(updateFactionData, 10000);
     setInterval(updateCountdowns, 1000);
     updateCountdowns();
