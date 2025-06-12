@@ -96,20 +96,33 @@
   <script>
     const socket = io();
 
-    function updateDOM(selector, updates) {
-      updates.forEach(member => {
-        const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
-        if (row) {
-          row.querySelector('.status').textContent = member.status;
-          const timerCell = row.querySelector('.timer');
-          if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
-            timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
-          } else {
-            timerCell.textContent = '-';
-          }
-        }
-      });
-    }
+
+function updateDOM(selector, updates) {
+  updates.forEach(member => {
+    const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
+    if (row) {
+      // Update status
+      const statusCell = row.querySelector('.status');
+      if (statusCell) statusCell.textContent = member.status;
+
+      // Update timer
+      const timerCell = row.querySelector('.timer');
+      if (timerCell) {
+        if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
+          const countdown = timerCell.querySelector('.countdown');
+          if (countdown) {
+            countdown.dataset.until = member.statusUntil;
+          } else {
+            timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
+          }
+        } else {
+          timerCell.textContent = '-';
+        }
+      }
+    }
+  });
+}
+
 
     socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
       updateDOM('tr', updates);
