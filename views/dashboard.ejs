@@ -1,150 +1,166 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="/css/style.css"> <!-- Ensure this path is correct -->
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
-    <div class="dashboard">
-        <h1>Welcome to Your Dashboard</h1>
-        <p><strong>Name:</strong>
-            <%= tornName %>
-        </p>
-        <p><strong>Torn ID:</strong>
-            <%= tornId %>
-        </p>
-        <p><strong>Faction ID:</strong>
-            <%= factionId %>
-        </p>
+  <div class="dashboard">
+    <p id="lastUpdated" style="text-align: right; font-size: 0.9rem; color: #666;">
+      Last updated: <span id="updateTime">-</span>
+    </p>
+    <h1>Welcome to Your Dashboard</h1>
+    <p><strong>Name:</strong> <%= tornName %></p>
+    <p><strong>Torn ID:</strong> <%= tornId %></p>
+    <p><strong>Faction ID:</strong> <%= factionId %></p>
 
-        <h2>Faction Members</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Timer</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% Object.values(members).forEach(member=> { %>
-                    <tr>
-                        <td>
-                            <%= member.name %>
-                        </td>
-                        <td>
-                            <%= member.status.description %>
-                        </td>
-                        <td>
-                            <% if (member.status.description==='Hospital' || member.status.description==='Jail' ) { %>
-                                <%= member.status.until %> seconds
-                                    <% } else { %>
-                                        -
-                                        <% } %>
-                        </td>
-                    </tr>
-                    <% }) %>
-            </tbody>
-        </table>
-
-        <p style="text-align: center; margin-top: 1rem; color: #666;">
-            Showing: <strong>
-                <%= warType==='last' ? 'Last War' : 'Current War' %>
-            </strong>
-        </p>
-
-        <h2>Enemy Faction: <%= enemyFactionName %>
-        </h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Claim</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% enemyMembers.forEach(member=> { %>
-                    <tr>
-                        <td>
-                            <%= member.name %>
-                        </td>
-
-                        <td>
-                            <%= member.status || 'Unknown' %>
-                                <% if ((member.status==='Hospital' || member.status==='Jail' ) && member.statusUntil) {
-                                    %>
-                                    (<span class="countdown" data-until="<%= member.statusUntil %>"></span>)
-                                    <% } %>
-                        </td>
-
-                        <td>
-                            <% if (member.claimedBy) { %>
-                                <%= member.claimedBy %>
-                                    <form method="POST" action="/auth/cancel-claim" style="display:inline;">
-                                        <input type="hidden" name="name" value="<%= member.name %>">
-                                        <button type="submit">Cancel</button>
-                                    </form>
-                                    <% } else { %>
-                                        <form method="POST" action="/auth/claim">
-                                            <input type="hidden" name="name" value="<%= member.name %>">
-                                            <button type="submit">Claim</button>
-                                        </form>
-                                        <% } %>
-                        </td>
-                    </tr>
-                    <% }) %>
-            </tbody>
-        </table>
-
-        <div style="text-align: center; margin-top: 2rem;">
-            <button onclick="updateEnemyStatus()">Update Enemy Status</button>
-            <p id="updateStatus" style="margin-top: 1rem; color: #555;"></p>
-        </div>
-
-        <div class="logout">
-            <a href="/auth/logout">Logout</a>
-        </div>
+    <div class="layout-toggle">
+      <button type="button" onclick="toggleLayout()">Toggle Layout</button>
     </div>
 
-    <script>
-        function updateCountdowns() {
-            const now = Math.floor(Date.now() / 1000);
-            document.querySelectorAll('.countdown').forEach(el => {
-                const until = parseInt(el.dataset.until, 10);
-                const secondsLeft = Math.max(0, until - now);
-                const minutes = Math.floor(secondsLeft / 60);
-                const seconds = secondsLeft % 60;
-                el.textContent = `${minutes}m ${seconds}s left`;
-            });
+    <div id="factionContainer" class="horizontal-layout">
+      <!-- Your Faction -->
+      <div class="faction-block">
+        <h2>Your Faction</h2>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Status</th><th>Timer</th></tr>
+          </thead>
+          <tbody>
+            <% Object.values(members).forEach(member => { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
+              <tr data-name="<%= safeId %>">
+                <td><%= member.name %></td>
+                <td class="status"><%= member.status.description %></td>
+                <td class="timer">
+                  <% if (['Hospital', 'Jail'].includes(member.status.description)) { %>
+                    <span class="countdown" data-until="<%= Math.floor(new Date(member.status.until).getTime() / 1000) %>"></span>
+                  <% } else { %>-<% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Enemy Faction -->
+      <div class="faction-block">
+        <h2>Enemy Faction: <%= enemyFactionName %></h2>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Status</th><th>Timer</th><th>Claim</th></tr>
+          </thead>
+          <tbody>
+            <% enemyMembers.forEach(member => { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
+              <tr data-name="<%= safeId %>">
+                <td><%= member.name %></td>
+                <td class="status"><%= member.status || 'Unknown' %></td>
+                <td class="timer">
+                  <% if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) { %>
+                    <span class="countdown" data-until="<%= member.statusUntil %>"></span>
+                  <% } else { %>-<% } %>
+                </td>
+                <td class="enemy-action">
+                  <% if (member.claimedBy) { %>
+                    <%= member.claimedBy %>
+                    <form method="POST" action="/auth/cancel-claim">
+                      <input type="hidden" name="name" value="<%= member.name %>">
+                      <button type="submit">Cancel</button>
+                    </form>
+                  <% } else { %>
+                    <form method="POST" action="/auth/claim">
+                      <input type="hidden" name="name" value="<%= member.name %>">
+                      <button type="submit">Claim</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+      <button type="button" onclick="updateEnemyStatus()">Update Enemy Status</button>
+      <p id="updateStatus" style="margin-top: 1rem; color: #555;"></p>
+    </div>
+
+    <div class="logout">
+      <a href="/auth/logout">Logout</a>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    function updateDOM(selector, updates) {
+      updates.forEach(member => {
+        const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
+        if (row) {
+          row.querySelector('.status').textContent = member.status;
+          const timerCell = row.querySelector('.timer');
+          if (['Hospital', 'Jail'].includes(member.status)) {
+            timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
+          } else {
+            timerCell.textContent = '-';
+          }
         }
+      });
+    }
 
-        function updateEnemyStatus() {
-            const statusEl = document.getElementById('updateStatus');
-            statusEl.textContent = 'Updating...';
+    socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
+      updateDOM('tr', updates);
+      document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
+    });
 
-            fetch('/auth/fetch-enemy-live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            }).then(res => {
-                if (res.ok) {
-                    statusEl.textContent = 'Enemy status updated.';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    statusEl.textContent = 'Failed to update.';
-                }
-            }).catch(() => {
-                statusEl.textContent = 'Error occurred.';
-            });
-        }
+    socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
+      updateDOM('tr', updates);
+      document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
+    });
 
-        updateCountdowns();
-        setInterval(updateCountdowns, 100);
-    </script>
+    function updateCountdowns() {
+      const now = Math.floor(Date.now() / 1000);
+      document.querySelectorAll('.countdown').forEach(el => {
+        const until = parseInt(el.dataset.until, 10);
+        const secondsLeft = Math.max(0, until - now);
+        const minutes = Math.floor(secondsLeft / 60);
+        const seconds = secondsLeft % 60;
+        el.textContent = `${minutes}m ${seconds}s left`;
+      });
+    }
+
+    function updateEnemyStatus() {
+      const statusEl = document.getElementById('updateStatus');
+      statusEl.textContent = 'Updating...';
+      fetch('/auth/fetch-enemy-live', { method: 'POST' })
+        .then(res => {
+          statusEl.textContent = res.ok ? 'Enemy status updated.' : 'Failed to update.';
+        })
+        .catch(() => {
+          statusEl.textContent = 'Error occurred.';
+        });
+    }
+
+    function toggleLayout() {
+      const container = document.getElementById('factionContainer');
+      container.classList.toggle('horizontal-layout');
+      container.classList.toggle('vertical-layout');
+    }
+
+    function updateFactionData() {
+      fetch('/auth/fetch-faction-live', { method: 'POST' });
+      fetch('/auth/fetch-enemy-live', { method: 'POST' });
+      const now = new Date();
+      document.getElementById('updateTime').textContent = now.toLocaleTimeString();
+    }
+
+    // Call it every 10 seconds
+    setInterval(updateFactionData, 10000);
+    setInterval(updateCountdowns, 1000);
+    updateCountdowns();
+  </script>
 </body>
-
 </html>

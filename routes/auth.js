@@ -22,5 +22,7 @@ router.post('/cancel-claim', authController.cancelClaim);
 
 // Real-time enemy status update route
 router.post('/fetch-enemy-live', ensureAuthenticated, authController.fetchEnemyLive);
+router.post('/fetch-faction-live', authController.fetchFactionLive);
+
 
 module.exports = router;

@@ -17,7 +17,7 @@ module.exports = {
         },
 
         getFactionMembers: async function (apikey) {
-                const response = await axios.get(`https://api.torn.com/faction/?selections=basic&key=${apikey}`);
+                const response = await axios.get(`https://api.torn.com/v2/faction?selections=members&key=${apikey}`);
                 return response.data.members;
         },
 
