@@ -168,3 +168,8 @@ button:hover {
 .enemy-action form {
   margin: 0;
 }
+
+.claimed-by, .claim-action {
+text-align: center;
+white-space: nowrap;
+}

@@ -1,4 +1,6 @@
 
+
+require('dotenv').config(); // Load environment variables
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);

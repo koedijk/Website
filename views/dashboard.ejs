@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
   <div class="dashboard">
     <p id="lastUpdated" style="text-align:right; font-size:0.9rem; color:#666;">
@@ -12,9 +14,15 @@
     </p>
 
     <h1>Welcome to Your Dashboard</h1>
-    <p><strong>Name:</strong> <%= tornName %></p>
-    <p><strong>Torn ID:</strong> <%= tornId %></p>
-    <p><strong>Faction ID:</strong> <%= factionId %></p>
+    <p><strong>Name:</strong>
+      <%= tornName %>
+    </p>
+    <p><strong>Torn ID:</strong>
+      <%= tornId %>
+    </p>
+    <p><strong>Faction ID:</strong>
+      <%= factionId %>
+    </p>
 
     <div class="layout-toggle">
       <button type="button" onclick="toggleLayout()">Toggle Layout</button>
@@ -26,57 +34,76 @@
         <h2>Your Faction</h2>
         <table>
           <thead>
-            <tr><th>Name</th><th>Status</th><th>Timer</th></tr>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Timer</th>
+            </tr>
           </thead>
           <tbody>
-            <% Object.values(members).forEach(member => { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
+            <% Object.values(members).forEach(member=> { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
               <tr data-name="<%= safeId %>">
-                <td><%= member.name %></td>
-                <td class="status"><%= member.status.description %></td>
+                <td>
+                  <%= member.name %>
+                </td>
+                <td class="status">
+                  <%= member.status.description %>
+                </td>
                 <td class="timer">
-                  <% if (['Hospital', 'Jail'].includes(member.status.description) && member.statusUntil) { %>
+                  <% if (['Hospital', 'Jail' ].includes(member.status.description) && member.statusUntil) { %>
                     <span class="countdown" data-until="<%= member.statusUntil %>"></span>
-                  <% } else { %>-<% } %>
+                    <% } else { %>-<% } %>
                 </td>
               </tr>
-            <% }) %>
+              <% }) %>
           </tbody>
         </table>
       </div>
 
       <!-- Enemy Faction -->
       <div class="faction-block">
-        <h2>Enemy Faction: <%= enemyFactionName %></h2>
+        <h2>Enemy Faction: <%= enemyFactionName %>
+        </h2>
         <table>
           <thead>
-            <tr><th>Name</th><th>Status</th><th>Timer</th><th>Claim</th></tr>
+
+<tr><th>Name</th><th>Status</th><th>Timer</th><th>Claimed By</th><th>Action</th></tr>
+
+
           </thead>
           <tbody>
-            <% enemyMembers.forEach(member => { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
+            <% enemyMembers.forEach(member=> { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
               <tr data-name="<%= safeId %>">
-                <td><%= member.name %></td>
-                <td class="status"><%= member.status || 'Unknown' %></td>
+                <td>
+                  <%= member.name %>
+                </td>
+                <td class="status">
+                  <%= member.status || 'Unknown' %>
+                </td>
                 <td class="timer">
-                  <% if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) { %>
+                  <% if (['Hospital', 'Jail' ].includes(member.status) && member.statusUntil) { %>
                     <span class="countdown" data-until="<%= member.statusUntil %>"></span>
-                  <% } else { %>-<% } %>
+                    <% } else { %>-<% } %>
                 </td>
-                <td class="enemy-action">
-                  <% if (member.claimedBy) { %>
-                    <%= member.claimedBy %>
-                    <form method="POST" action="/auth/cancel-claim">
-                      <input type="hidden" name="name" value="<%= member.name %>">
-                      <button type="submit">Cancel</button>
-                    </form>
-                  <% } else { %>
-                    <form method="POST" action="/auth/claim">
-                      <input type="hidden" name="name" value="<%= member.name %>">
-                      <button type="submit">Claim</button>
-                    </form>
-                  <% } %>
-                </td>
+                <td class="claimed-by">
+  <%= member.claimedBy || '-' %>
+</td>
+<td class="claim-action">
+  <% if (!member.claimedBy && (member.status === 'Okay' || (member.status === 'Hospital' && member.statusUntil && (member.statusUntil * 1000 - Date.now()) < 300000))) { %>
+    <form method="POST" action="/auth/claim">
+      <input type="hidden" name="name" value="<%= member.name %>">
+      <button type="submit">Claim</button>
+    </form>
+  <% } else if (member.claimedBy) { %>
+    <form method="POST" action="/auth/cancel-claim">
+      <input type="hidden" name="name" value="<%= member.name %>">
+      <button type="submit">Cancel</button>
+    </form>
+  <% } %>
+</td>
+
               </tr>
-            <% }) %>
+              <% }) %>
           </tbody>
         </table>
       </div>
@@ -97,31 +124,31 @@
     const socket = io();
 
 
-function updateDOM(selector, updates) {
-  updates.forEach(member => {
-    const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
-    if (row) {
-      // Update status
-      const statusCell = row.querySelector('.status');
-      if (statusCell) statusCell.textContent = member.status;
+    function updateDOM(selector, updates) {
+      updates.forEach(member => {
+        const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
+        if (row) {
+          // Update status
+          const statusCell = row.querySelector('.status');
+          if (statusCell) statusCell.textContent = member.status;
 
-      // Update timer
-      const timerCell = row.querySelector('.timer');
-      if (timerCell) {
-        if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
-          const countdown = timerCell.querySelector('.countdown');
-          if (countdown) {
-            countdown.dataset.until = member.statusUntil;
-          } else {
-            timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
-          }
-        } else {
-          timerCell.textContent = '-';
-        }
-      }
-    }
-  });
-}
+          // Update timer
+          const timerCell = row.querySelector('.timer');
+          if (timerCell) {
+            if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
+              const countdown = timerCell.querySelector('.countdown');
+              if (countdown) {
+                countdown.dataset.until = member.statusUntil;
+              } else {
+                timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
+              }
+            } else {
+              timerCell.textContent = '-';
+            }
+          }
+        }
+      });
+    }
 
 
     socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
@@ -134,48 +161,48 @@ function updateDOM(selector, updates) {
       document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
     });
 
-socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
-  const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
-  const row = document.querySelector(`tr[data-name="${safeId}"]`);
-  if (!row) return;
+    socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
+      const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
+      const row = document.querySelector(`tr[data-name="${safeId}"]`);
+      if (!row) return;
 
-  // Update claim cell
-  const claimCell = row.querySelector('.enemy-action');
-  if (claimCell) {
-    if (claimedBy) {
-      claimCell.innerHTML = `
+      // Update claim cell
+      const claimCell = row.querySelector('.enemy-action');
+      if (claimCell) {
+        if (claimedBy) {
+          claimCell.innerHTML = `
         ${claimedBy}
         <form method="POST" action="/auth/cancel-claim">
           <input type="hidden" name="name" value="${name}">
           <button type="submit">Cancel</button>
         </form>
       `;
-    } else {
-      claimCell.innerHTML = `
+        } else {
+          claimCell.innerHTML = `
         <form method="POST" action="/auth/claim">
           <input type="hidden" name="name" value="${name}">
           <button type="submit">Claim</button>
         </form>
       `;
-    }
-  }
+        }
+      }
 
-  // Update status cell
-  const statusCell = row.querySelector('.status');
-  if (statusCell && status) {
-    statusCell.textContent = status;
-  }
+      // Update status cell
+      const statusCell = row.querySelector('.status');
+      if (statusCell && status) {
+        statusCell.textContent = status;
+      }
 
-  // Update timer cell
-  const timerCell = row.querySelector('.timer');
-  if (timerCell) {
-    if (['Hospital', 'Jail'].includes(status) && statusUntil) {
-      timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
-    } else {
-      timerCell.textContent = '-';
-    }
-  }  
-});
+      // Update timer cell
+      const timerCell = row.querySelector('.timer');
+      if (timerCell) {
+        if (['Hospital', 'Jail'].includes(status) && statusUntil) {
+          timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
+        } else {
+          timerCell.textContent = '-';
+        }
+      }
+    });
 
 
     function updateCountdowns() {
@@ -219,4 +246,5 @@ socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
     updateCountdowns();
   </script>
 </body>
+
 </html>
