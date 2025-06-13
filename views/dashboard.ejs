@@ -205,16 +205,21 @@
     });
 
 
-    function updateCountdowns() {
-      const now = Math.floor(Date.now() / 1000);
-      document.querySelectorAll('.countdown').forEach(el => {
-        const until = parseInt(el.dataset.until, 10);
-        const secondsLeft = Math.max(0, until - now);
-        const minutes = Math.floor(secondsLeft / 60);
-        const seconds = secondsLeft % 60;
-        el.textContent = `${minutes}m ${seconds}s left`;
-      });
-    }
+
+function updateCountdowns() {
+  const now = Math.floor(Date.now() / 1000);
+  document.querySelectorAll('.countdown').forEach(el => {
+    const until = parseInt(el.dataset.until, 10);
+    const secondsLeft = Math.max(0, until - now);
+
+    const hours = Math.floor(secondsLeft / 3600);
+    const minutes = Math.floor((secondsLeft % 3600) / 60);
+    const seconds = secondsLeft % 60;
+
+    el.textContent = `${hours}h ${minutes}m ${seconds}s`;
+  });
+}
+
 
     function updateEnemyStatus() {
       const statusEl = document.getElementById('updateStatus');
