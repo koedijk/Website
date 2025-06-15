@@ -11,67 +11,65 @@ exports.getLogin = (req, res) => {
 // Handle login form submission
 exports.postLogin = async (req, res) => {
   const { api_key } = req.body;
-  try {
-    const allowed = await new Promise((resolve, reject) => {
-      db.query('SELECT * FROM allowedfaction WHERE api_key = ?', [api_key], (err, results) => {
-        if (err || results.length === 0) {
-          return res.render('login', { error: 'Access Denied' });
-        }
-        resolve(results[0]);
-      });
-    });
+  const pool = req.app.get('pool');
 
+  try {
+    const [allowedResults] = await pool.query(
+      'SELECT * FROM allowedfaction WHERE api_key = ?',
+      [api_key]
+    );
+
+    if (allowedResults.length === 0) {
+      return res.render('login', { error: 'Access Denied' });
+    }
+
+    const allowed = allowedResults[0];
     const check = await apicalls.checkApi(api_key);
     const factionid = check.basic.id;
 
     if (!allowed.factionid || allowed.factionid !== factionid) {
-      await new Promise((resolve, reject) => {
-        db.query('UPDATE allowedfaction SET factionid = ? WHERE api_key = ?', [factionid, api_key], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
+      await pool.query(
+        'UPDATE allowedfaction SET factionid = ? WHERE api_key = ?',
+        [factionid, api_key]
+      );
     }
 
     const basicinfo = await apicalls.basicInfo(api_key);
     const tornid = basicinfo.player_id;
     const playername = basicinfo.name;
 
-    const user = await new Promise((resolve, reject) => {
-      db.query('SELECT * FROM USERS WHERE api_key = ?', [api_key], (err, results) => {
-        if (err) return reject(err);
-        resolve(results[0]);
-      });
-    });
+    const [userResults] = await pool.query(
+      'SELECT * FROM USERS WHERE api_key = ?',
+      [api_key]
+    );
 
-    if (!user) {
-      await new Promise((resolve, reject) => {
-        db.query(
-          'INSERT INTO USERS (tornid, name, factionid, api_key) VALUES (?, ?, ?, ?)',
-          [tornid, playername, factionid, api_key],
-          (err) => {
-            if (err) return reject(err);
-            resolve();
-          }
-        );
-      });
+    if (userResults.length === 0) {
+      await pool.query(
+        'INSERT INTO USERS (tornid, name, factionid, api_key) VALUES (?, ?, ?, ?)',
+        [tornid, playername, factionid, api_key]
+      );
     }
 
-    handleLogin(req, res, playername, factionid, tornid, api_key);
+    await handleLogin(req, res, playername, factionid, tornid, api_key, pool);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).send(error.toString());
   }
 };
 
-function handleLogin(req, res, playername, factionid, tornid, apiKey) {
-  const deleteQuery = "DELETE FROM sessions WHERE JSON_EXTRACT(data, '$.apiKey') = ?";
-  db.query(deleteQuery, [apiKey], (err) => {
-    if (err) console.error('Error deleting old sessions:', err);
+
+async function handleLogin(req, res, playername, factionid, tornid, apiKey, pool) {
+  try {
+    await pool.query(
+      "DELETE FROM sessions WHERE JSON_EXTRACT(data, '$.apiKey') = ?",
+      [apiKey]
+    );
+
     req.session.tornName = playername;
     req.session.tornId = tornid;
     req.session.factionId = factionid;
-    req.session.apiKey = encrypt(apiKey); // 🔐 Store encrypted API key
+    req.session.apiKey = encrypt(apiKey);
+
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
@@ -79,8 +77,12 @@ function handleLogin(req, res, playername, factionid, tornid, apiKey) {
       }
       res.redirect('/auth/dashboard');
     });
-  });
+  } catch (err) {
+    console.error('Session cleanup error:', err);
+    res.status(500).send('Session cleanup failed');
+  }
 }
+
 
 // Dashboard
 exports.getDashboard = async (req, res) => {
