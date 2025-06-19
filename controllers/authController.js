@@ -15,7 +15,7 @@ exports.postLogin = async (req, res) => {
 
   try {
     const [allowedResults] = await pool.query(
-      'SELECT * FROM allowedfaction WHERE api_key = ?',
+      'SELECT * FROM ALLOWEDFACTION WHERE api_key = ?',
       [api_key]
     );
 
@@ -29,7 +29,7 @@ exports.postLogin = async (req, res) => {
 
     if (!allowed.factionid || allowed.factionid !== factionid) {
       await pool.query(
-        'UPDATE allowedfaction SET factionid = ? WHERE api_key = ?',
+        'UPDATE ALLOWEDFACTION SET factionid = ? WHERE api_key = ?',
         [factionid, api_key]
       );
     }
@@ -53,7 +53,7 @@ exports.postLogin = async (req, res) => {
     await handleLogin(req, res, playername, factionid, tornid, api_key, pool);
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).send(error.toString());
+    res.status(500).send('Login error: #aC55');
   }
 };
 
@@ -61,7 +61,7 @@ exports.postLogin = async (req, res) => {
 async function handleLogin(req, res, playername, factionid, tornid, apiKey, pool) {
   try {
     await pool.query(
-      "DELETE FROM sessions WHERE JSON_EXTRACT(data, '$.apiKey') = ?",
+      "DELETE FROM SESSIONS WHERE JSON_EXTRACT(data, '$.apiKey') = ?",
       [apiKey]
     );
 
@@ -134,7 +134,7 @@ exports.getDashboard = async (req, res) => {
 
     const claims = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT name, claimed_by FROM enemy_faction_members 
+        `SELECT name, claimed_by FROM ENEMY_FACTION_MEMBERS 
          WHERE war_type = ? AND war_with_factionid = ?`,
         [warType, myFactionId],
         (err, results) => {
@@ -179,13 +179,13 @@ exports.getDashboard = async (req, res) => {
 exports.fetchFactionLive = async (req, res) => {
 
 
-  if (!req.session || !req.session.apiKey) {
-    return res.status(401).send('Session expired');
-  }
+ if (!req.session || !req.session.apiKey) {
+ return res.status(401).send('Session expired');
+ }
 
-  const encryptedKey = req.session.apiKey;
-  const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
-  const myFactionId = req.session.factionId;
+ const encryptedKey = req.session.apiKey;
+ const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
+ const myFactionId = req.session.factionId;
 
   const io = req.app.get('io');
 
@@ -208,7 +208,7 @@ exports.fetchFactionLive = async (req, res) => {
 
     updates.forEach(member => {
       db.query(`
-        INSERT INTO our_faction_members (
+        INSERT INTO OUR_FACTION_MEMBERS (
           name, tornid, factionid, laststatus, status_until, war_type, war_with_factionid, changedate
         )
         VALUES (?, ?, ?, ?, ?, 'current', NULL, NOW())
@@ -224,7 +224,7 @@ exports.fetchFactionLive = async (req, res) => {
         member.status,
         member.statusUntil || null
       ], (err) => {
-        if (err) console.error('DB insert error (our_faction_members):', err);
+        if (err) console.error('DB insert error (OUR_FACTION_MEMBERS):', err);
       });
     });
 
@@ -242,12 +242,12 @@ exports.fetchFactionLive = async (req, res) => {
 exports.fetchEnemyLive = async (req, res) => {
     
 if (!req.session || !req.session.apiKey) {
-    return res.status(401).send('Session expired');
-  }
+ return res.status(401).send('Session expired');
+ }
 
-  const encryptedKey = req.session.apiKey;
-  const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
-  const myFactionId = req.session.factionId;
+ const encryptedKey = req.session.apiKey;
+ const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
+ const myFactionId = req.session.factionId;
 
     try {
         const rankedWars = await apicalls.getRankedWars(apiKey);
@@ -266,7 +266,7 @@ if (!req.session || !req.session.apiKey) {
         const enemyFactionId = enemyFaction.id;
 
         db.query(
-            'DELETE FROM enemy_faction_members WHERE war_type = ? AND war_with_factionid = ? AND factionid != ?',
+            'DELETE FROM ENEMY_FACTION_MEMBERS WHERE war_type = ? AND war_with_factionid = ? AND factionid != ?',
             [warType, myFactionId, enemyFactionId],
             (err) => {
                 if (err) console.error('Cleanup error:', err);
@@ -285,7 +285,7 @@ if (!req.session || !req.session.apiKey) {
 
         updates.forEach(member => {
             db.query(`
-                INSERT INTO enemy_faction_members (
+                INSERT INTO ENEMY_FACTION_MEMBERS (
                     name, tornid, factionid, laststatus, status_until, war_type, war_with_factionid, changedate
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
@@ -326,7 +326,7 @@ exports.claim = (req, res) => {
   const io = req.app.get('io');
 
   db.query(
-    'SELECT * FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
+    'SELECT * FROM ENEMY_FACTION_MEMBERS WHERE name = ? AND war_with_factionid = ?',
     [name, myFactionId],
     (err, results) => {
       if (err || results.length === 0) {
@@ -348,7 +348,7 @@ exports.claim = (req, res) => {
       }
 
       db.query(
-        'UPDATE enemy_faction_members SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
+        'UPDATE ENEMY_FACTION_MEMBERS SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
         [claimedBy, name, myFactionId],
         (err) => {
           if (err) {
@@ -380,7 +380,7 @@ exports.cancelClaim = (req, res) => {
 
   if (name) {
     db.query(
-      `UPDATE enemy_faction_members 
+      `UPDATE ENEMY_FACTION_MEMBERS 
        SET claimed_by = NULL, claimed_at = NULL 
        WHERE name = ?`,
       [name],
@@ -393,7 +393,7 @@ exports.cancelClaim = (req, res) => {
         // Fetch updated status and statusUntil
         db.query(
           `SELECT laststatus AS status, status_until AS statusUntil 
-           FROM enemy_faction_members 
+           FROM ENEMY_FACTION_MEMBERS 
            WHERE name = ?`,
           [name],
           (err, results) => {
