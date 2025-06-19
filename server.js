@@ -2,17 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
-const mysql = require('mysql2/promise'); // Use promise-based API
+const mysql = require('mysql2/promise');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
+const compression = require('compression');
 const authRoutes = require('./routes/auth');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 const PORT = 3000;
-const compression = require('compression');
-
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -21,19 +21,9 @@ const pool = mysql.createPool({
   password: '',
   database: 'torn',
   waitForConnections: true,
-  connectionLimit: 10, // Adjust based on your DB capacity
+  connectionLimit: 10,
   queueLimit: 0
 });
-
-// Test connection
-pool.getConnection()
-  .then(conn => {
-    console.log('Connected to database.');
-    conn.release();
-  })
-  .catch(err => {
-    console.error('Database connection failed:', err.stack);
-  });
 
 // Session store
 const sessionStore = new MySQLStore({}, pool);
@@ -46,6 +36,7 @@ const sessionMiddleware = session({
   cookie: { maxAge: 30 * 60 * 1000 }
 });
 
+// Middleware setup
 app.use(sessionMiddleware);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -60,10 +51,23 @@ io.use((socket, next) => {
 });
 
 // Make io and pool accessible in routes/controllers
-
 app.set('io', io);
 app.set('pool', pool);
 
+// Receive allowedFactionIds from master process
+let allowedFactionIds = [];
+
+process.on('message', (msg) => {
+  if (msg.type === 'updateAllowedFactionIds') {
+    allowedFactionIds = msg.data;
+    console.log(`[Worker ${process.pid}] Updated allowedFactionIds:`, allowedFactionIds);
+  }
+});
+
+app.use((req, res, next) => {
+  req.app.locals.allowedFactionIds = allowedFactionIds;
+  next();
+});
 
 // Routes
 app.use('/auth', authRoutes);
@@ -72,5 +76,5 @@ app.get('/', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Worker ${process.pid} running on http://localhost:${PORT}`);
 });

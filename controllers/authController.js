@@ -1,67 +1,91 @@
 const db = require('../models/db');
 const apicalls = require('../calls/apicalls');
 const { encrypt, decrypt, isHex } = require('../utils/encryption'); 
-let enemyClaims = {}; // In-memory store for claims
 
-// Render login page
+
 exports.getLogin = (req, res) => {
     res.render('login', { error: null });
 };
 
 // Handle login form submission
+
 exports.postLogin = async (req, res) => {
-  const { api_key } = req.body;
-  const pool = req.app.get('pool');
+ const { api_key } = req.body;
+  const allowedFactionIds = req.app.locals.allowedFactionIds;
+ const pool = req.app.get('pool');
+  console.log('Allowed Factions: ' + allowedFactionIds);
+ try {
+  
+ // Step 1: Check if user already exists
+ const [userResults] = await pool.query(
+ 'SELECT * FROM users WHERE api_key = ?',
+ [api_key]
+ );
 
-  try {
-    const [allowedResults] = await pool.query(
-      'SELECT * FROM ALLOWEDFACTION WHERE api_key = ?',
-      [api_key]
-    );
+ if (userResults.length > 0) {
+ const user = userResults[0];
+ return await handleLogin(req, res, user.name, user.factionid, user.tornid, api_key, pool);
+ }
 
-    if (allowedResults.length === 0) {
-      return res.render('login', { error: 'Access Denied' });
-    }
+ // Step 2: Check if API key is in allowedfaction
+ const [allowedResults] = await pool.query(
+ 'SELECT * FROM allowedfaction WHERE api_key = ?',
+ [api_key]
+ );
+    console.log(api_key);
+ const check = await apicalls.checkApi(api_key);
+ const currentFactionId = check.basic.id;
 
-    const allowed = allowedResults[0];
-    const check = await apicalls.checkApi(api_key);
-    const factionid = check.basic.id;
+ if (allowedResults.length > 0) {
+ const allowed = allowedResults[0];
 
-    if (!allowed.factionid || allowed.factionid !== factionid) {
-      await pool.query(
-        'UPDATE ALLOWEDFACTION SET factionid = ? WHERE api_key = ?',
-        [factionid, api_key]
-      );
-    }
+ // Step 2a: If factionid is null, update it
+ if (!allowed.factionid) {
+ await pool.query(
+ 'UPDATE allowedfaction SET factionid = ? WHERE api_key = ?',
+ [currentFactionId, api_key]
+ );
+ } else if (!allowedFactionIds.includes(currentFactionId)) {
+ // Step 2b: Faction mismatch
+ return res.render('login', { error: 'Faction mismatch. Access Denied.' });
+ }
 
-    const basicinfo = await apicalls.basicInfo(api_key);
-    const tornid = basicinfo.player_id;
-    const playername = basicinfo.name;
+ // Proceed to create user and login
+ } else {
+ // Step 3: Check if the API key's faction matches any allowed faction
+ const [factionMatches] = await pool.query(
+ 'SELECT * FROM allowedfaction WHERE factionid = ?',
+ [currentFactionId]
+ );
 
-    const [userResults] = await pool.query(
-      'SELECT * FROM USERS WHERE api_key = ?',
-      [api_key]
-    );
+ if (factionMatches.length === 0) {
+ return res.render('login', { error: 'Access Denied. Faction not allowed.' });
+ }
+ }
 
-    if (userResults.length === 0) {
-      await pool.query(
-        'INSERT INTO USERS (tornid, name, factionid, api_key) VALUES (?, ?, ?, ?)',
-        [tornid, playername, factionid, api_key]
-      );
-    }
+ // Step 4: Create user and proceed with login
+ const basicinfo = await apicalls.basicInfo(api_key);
+ const tornid = basicinfo.player_id;
+ const playername = basicinfo.name;
 
-    await handleLogin(req, res, playername, factionid, tornid, api_key, pool);
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).send('Login error: #aC55');
-  }
+ await pool.query(
+ 'INSERT INTO users (tornid, name, factionid, api_key) VALUES (?, ?, ?, ?)',
+ [tornid, playername, currentFactionId, api_key]
+ );
+
+ await handleLogin(req, res, playername, currentFactionId, tornid, api_key, pool);
+ } catch (error) {
+ console.error('Login error:', error);
+ res.status(500).send('Login error: #aC55');
+ }
 };
+
 
 
 async function handleLogin(req, res, playername, factionid, tornid, apiKey, pool) {
   try {
     await pool.query(
-      "DELETE FROM SESSIONS WHERE JSON_EXTRACT(data, '$.apiKey') = ?",
+      "DELETE FROM sessions WHERE JSON_EXTRACT(data, '$.apiKey') = ?",
       [apiKey]
     );
 
@@ -134,7 +158,7 @@ exports.getDashboard = async (req, res) => {
 
     const claims = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT name, claimed_by FROM ENEMY_FACTION_MEMBERS 
+        `SELECT name, claimed_by FROM enemy_faction_members
          WHERE war_type = ? AND war_with_factionid = ?`,
         [warType, myFactionId],
         (err, results) => {
@@ -208,7 +232,7 @@ exports.fetchFactionLive = async (req, res) => {
 
     updates.forEach(member => {
       db.query(`
-        INSERT INTO OUR_FACTION_MEMBERS (
+        INSERT INTO our_faction_members (
           name, tornid, factionid, laststatus, status_until, war_type, war_with_factionid, changedate
         )
         VALUES (?, ?, ?, ?, ?, 'current', NULL, NOW())
@@ -266,7 +290,7 @@ if (!req.session || !req.session.apiKey) {
         const enemyFactionId = enemyFaction.id;
 
         db.query(
-            'DELETE FROM ENEMY_FACTION_MEMBERS WHERE war_type = ? AND war_with_factionid = ? AND factionid != ?',
+            'DELETE FROM enemy_faction_members WHERE war_type = ? AND war_with_factionid = ? AND factionid != ?',
             [warType, myFactionId, enemyFactionId],
             (err) => {
                 if (err) console.error('Cleanup error:', err);
@@ -285,7 +309,7 @@ if (!req.session || !req.session.apiKey) {
 
         updates.forEach(member => {
             db.query(`
-                INSERT INTO ENEMY_FACTION_MEMBERS (
+                INSERT INTO enemy_faction_members (
                     name, tornid, factionid, laststatus, status_until, war_type, war_with_factionid, changedate
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
@@ -326,7 +350,7 @@ exports.claim = (req, res) => {
   const io = req.app.get('io');
 
   db.query(
-    'SELECT * FROM ENEMY_FACTION_MEMBERS WHERE name = ? AND war_with_factionid = ?',
+    'SELECT * FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
     [name, myFactionId],
     (err, results) => {
       if (err || results.length === 0) {
@@ -348,7 +372,7 @@ exports.claim = (req, res) => {
       }
 
       db.query(
-        'UPDATE ENEMY_FACTION_MEMBERS SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
+        'UPDATE enemy_faction_members SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
         [claimedBy, name, myFactionId],
         (err) => {
           if (err) {
@@ -380,7 +404,7 @@ exports.cancelClaim = (req, res) => {
 
   if (name) {
     db.query(
-      `UPDATE ENEMY_FACTION_MEMBERS 
+      `UPDATE enemy_faction_members 
        SET claimed_by = NULL, claimed_at = NULL 
        WHERE name = ?`,
       [name],
@@ -434,3 +458,4 @@ exports.logout = (req, res) => {
         res.render('login', { error: null });
     });
 };
+
