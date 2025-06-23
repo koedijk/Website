@@ -12,28 +12,35 @@ const authRoutes = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+let allowedFactionIds = [];						   
 
+// Trust proxy if behind Nginx or similar
+app.set('trust proxy', 1);									 
 // MySQL connection pool
 const pool = mysql.createPool({
-  host: '127.0.0.1',
-  user: 'root',
-  password: '',
-  database: 'torn',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+ host: process.env.DB_HOST,
+ user: process.env.DB_USER,
+ password: process.env.DB_PASSWORD,
+ database: process.env.DB_NAME,
+ waitForConnections: true,
+ connectionLimit: 10,
+ queueLimit: 0
 });
 
 // Session store
 const sessionStore = new MySQLStore({}, pool);
 const sessionMiddleware = session({
-  key: 'api',
-  secret: 'session_cookie_secret',
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 30 * 60 * 1000 }
+ key: 'api',
+ secret: process.env.SESSION_SECRET,
+ store: sessionStore,
+ resave: false,
+ saveUninitialized: false,
+ cookie: {
+ maxAge: 30 * 60 * 1000,
+ secure: false, // Set to true if using HTTPS
+ sameSite: 'lax'
+ }	
 });
 
 // Middleware setup
@@ -44,23 +51,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(compression());
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
+app.set('io', io);
+app.set('pool', pool);
 // Share session with Socket.IO
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
 
-// Make io and pool accessible in routes/controllers
-app.set('io', io);
-app.set('pool', pool);
 
-// Receive allowedFactionIds from master process
-let allowedFactionIds = [];
+
+let totalConnections = 0;
+
+io.on('connection', (socket) => {
+  totalConnections++;
+  //console.log(`Socket connected: ${socket.id} | Total: ${totalConnections}`);
+
+  socket.on('disconnect', () => {
+    totalConnections--;
+    //console.log(`Socket disconnected: ${socket.id} | Total: ${totalConnections}`);
+  });
+});
+
 
 process.on('message', (msg) => {
   if (msg.type === 'updateAllowedFactionIds') {
     allowedFactionIds = msg.data;
-    console.log(`[Worker ${process.pid}] Updated allowedFactionIds:`, allowedFactionIds);
+    //console.log(`[Worker ${process.pid}] Updated allowedFactionIds:`, allowedFactionIds);
   }
 });
 
@@ -74,7 +90,6 @@ app.use('/auth', authRoutes);
 app.get('/', (req, res) => {
   res.redirect('/auth/login');
 });
-
 server.listen(PORT, () => {
-  console.log(`Worker ${process.pid} running on http://localhost:${PORT}`);
+  //console.log(`Worker ${process.pid} running on http://localhost:${PORT}`);
 });

@@ -5,11 +5,11 @@
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
-  <script src="/js/dashboard.js" defer></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/dashboard.js" defer></script>
 </head>
 
-<body>
+<body data-faction-id="<%= factionId %>">
   <div class="dashboard">
     <p id="lastUpdated">
       Last updated: <span id="updateTime">-</span>
@@ -25,14 +25,14 @@
     <p><strong>Faction ID:</strong>
       <%= factionId %>
     </p>
+
     <div class="logout">
       <a href="/auth/logout">Logout</a>
     </div>
 
-<div class="layout-toggle">
-  <button id="layout-toggle" type="button">Toggle Layout</button>
-</div>
-
+    <div class="layout-toggle">
+      <button id="layout-toggle" type="button">Toggle Layout</button>
+    </div>
 
     <div id="factionContainer" class="horizontal-layout">
       <!-- Your Faction -->
@@ -53,10 +53,17 @@
                   <%= member.name %>
                 </td>
                 <td class="status">
-                  <%= member.status.description %>
+                  <% if (['Hospital', 'Jail' ].includes(member.statusState)) { %>
+                    <%= member.statusState %>
+                      <% } else if (member.status && member.status.description) { %>
+                        <%= member.status.description %>
+                          <% } else { %>
+                            <%= member.status || 'Unknown' %>
+                              <% } %>
                 </td>
+
                 <td class="timer">
-                  <% if (['Hospital', 'Jail' ].includes(member.status.description) && member.statusUntil) { %>
+                  <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
                     <span class="countdown" data-until="<%= member.statusUntil %>"></span>
                     <% } else { %>-<% } %>
                 </td>
@@ -72,7 +79,6 @@
         </h2>
         <table>
           <thead>
-
             <tr>
               <th>Name</th>
               <th>Status</th>
@@ -80,8 +86,6 @@
               <th>Claimed By</th>
               <th>Action</th>
             </tr>
-
-
           </thead>
           <tbody>
             <% enemyMembers.forEach(member=> { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
@@ -90,10 +94,17 @@
                   <%= member.name %>
                 </td>
                 <td class="status">
-                  <%= member.status || 'Unknown' %>
+                  <% if (['Hospital', 'Jail' ].includes(member.statusState)) { %>
+                    <%= member.statusState %>
+                      <% } else if (member.status && member.status.description) { %>
+                        <%= member.status.description %>
+                          <% } else { %>
+                            <%= member.status || 'Unknown' %>
+                              <% } %>
                 </td>
+
                 <td class="timer">
-                  <% if (['Hospital', 'Jail' ].includes(member.status) && member.statusUntil) { %>
+                  <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
                     <span class="countdown" data-until="<%= member.statusUntil %>"></span>
                     <% } else { %>-<% } %>
                 </td>
@@ -101,7 +112,7 @@
                   <%= member.claimedBy || '-' %>
                 </td>
                 <td class="claim-action">
-                  <% if (!member.claimedBy && (member.status==='Okay' || (member.status==='Hospital' &&
+                  <% if (!member.claimedBy && (member.status==='Okay' || (member.statusState==='Hospital' &&
                     member.statusUntil && (member.statusUntil * 1000 - Date.now()) < 300000))) { %>
                     <form method="POST" action="/auth/claim">
                       <input type="hidden" name="name" value="<%= member.name %>">
@@ -114,17 +125,13 @@
                       </form>
                       <% } %>
                 </td>
-
               </tr>
               <% }) %>
           </tbody>
         </table>
       </div>
     </div>
-
-
   </div>
-
 </body>
 
 </html>

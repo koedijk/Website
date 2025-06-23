@@ -14,7 +14,7 @@ if (cluster.isMaster) {
 
   // Restart dead workers
   cluster.on('exit', (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died. Restarting...`);
+    //console.log(`Worker ${worker.process.pid} died. Restarting...`);
     cluster.fork();
   });
 
@@ -25,7 +25,6 @@ if (cluster.isMaster) {
     password: '',
     database: 'torn',
     waitForConnections: true,
-    connectionLimit: 10,
     queueLimit: 0
   });
 
@@ -36,7 +35,7 @@ if (cluster.isMaster) {
         'SELECT DISTINCT factionid FROM allowedfaction WHERE factionid IS NOT NULL'
       );
       const ids = results.map(row => row.factionid);
-      console.log('[Master] Broadcasting allowedFactionIds:', ids);
+      //console.log('[Master] Broadcasting allowedFactionIds:', ids);
 
       for (const id in cluster.workers) {
         cluster.workers[id].send({ type: 'updateAllowedFactionIds', data: ids });
