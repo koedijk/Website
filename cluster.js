@@ -20,7 +20,7 @@ if (cluster.isMaster) {
 
   // Create MySQL pool in master
   const pool = mysql.createPool({
-    host: '127.0.0.1',
+    host: process.env.DB_HOST,
     user: 'root',
     password: '',
     database: 'torn',

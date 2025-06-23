@@ -5,11 +5,13 @@
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/dashboard.js" defer></script>
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body>
   <div class="dashboard">
-    <p id="lastUpdated" style="text-align:right; font-size:0.9rem; color:#666;">
+    <p id="lastUpdated">
       Last updated: <span id="updateTime">-</span>
     </p>
 
@@ -23,10 +25,14 @@
     <p><strong>Faction ID:</strong>
       <%= factionId %>
     </p>
-
-    <div class="layout-toggle">
-      <button type="button" onclick="toggleLayout()">Toggle Layout</button>
+    <div class="logout">
+      <a href="/auth/logout">Logout</a>
     </div>
+
+<div class="layout-toggle">
+  <button id="layout-toggle" type="button">Toggle Layout</button>
+</div>
+
 
     <div id="factionContainer" class="horizontal-layout">
       <!-- Your Faction -->
@@ -116,147 +122,9 @@
       </div>
     </div>
 
-    <div style="text-align:center; margin-top:2rem;">
-      <button type="button" onclick="updateEnemyStatus()">Update Enemy Status</button>
-      <p id="updateStatus" style="margin-top:1rem; color:#555;"></p>
-    </div>
 
-    <div class="logout">
-      <a href="/auth/logout">Logout</a>
-    </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-
-
-    function updateDOM(selector, updates) {
-      updates.forEach(member => {
-        const row = document.querySelector(`${selector}[data-name="${member.name.replace(/[^a-zA-Z0-9]/g, '')}"]`);
-        if (row) {
-          // Update status
-          const statusCell = row.querySelector('.status');
-          if (statusCell) statusCell.textContent = member.status;
-
-          // Update timer
-          const timerCell = row.querySelector('.timer');
-          if (timerCell) {
-            if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
-              const countdown = timerCell.querySelector('.countdown');
-              if (countdown) {
-                countdown.dataset.until = member.statusUntil;
-              } else {
-                timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
-              }
-            } else {
-              timerCell.textContent = '-';
-            }
-          }
-        }
-      });
-    }
-
-
-    socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
-      updateDOM('tr', updates);
-      document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
-    });
-
-    socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
-      updateDOM('tr', updates);
-      document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
-    });
-
-    socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
-      const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
-      const row = document.querySelector(`tr[data-name="${safeId}"]`);
-      if (!row) return;
-
-      // Update claim cell
-      const claimCell = row.querySelector('.enemy-action');
-      if (claimCell) {
-        if (claimedBy) {
-          claimCell.innerHTML = `
-        ${claimedBy}
-        <form method="POST" action="/auth/cancel-claim">
-          <input type="hidden" name="name" value="${name}">
-          <button type="submit">Cancel</button>
-        </form>
-      `;
-        } else {
-          claimCell.innerHTML = `
-        <form method="POST" action="/auth/claim">
-          <input type="hidden" name="name" value="${name}">
-          <button type="submit">Claim</button>
-        </form>
-      `;
-        }
-      }
-
-      // Update status cell
-      const statusCell = row.querySelector('.status');
-      if (statusCell && status) {
-        statusCell.textContent = status;
-      }
-
-      // Update timer cell
-      const timerCell = row.querySelector('.timer');
-      if (timerCell) {
-        if (['Hospital', 'Jail'].includes(status) && statusUntil) {
-          timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
-        } else {
-          timerCell.textContent = '-';
-        }
-      }
-    });
-
-
-
-    function updateCountdowns() {
-      const now = Math.floor(Date.now() / 1000);
-      document.querySelectorAll('.countdown').forEach(el => {
-        const until = parseInt(el.dataset.until, 10);
-        const secondsLeft = Math.max(0, until - now);
-
-        const hours = Math.floor(secondsLeft / 3600);
-        const minutes = Math.floor((secondsLeft % 3600) / 60);
-        const seconds = secondsLeft % 60;
-
-        el.textContent = `${hours}h ${minutes}m ${seconds}s`;
-      });
-    }
-
-
-    function updateEnemyStatus() {
-      const statusEl = document.getElementById('updateStatus');
-      statusEl.textContent = 'Updating...';
-      fetch('/auth/fetch-enemy-live', { method: 'POST' })
-        .then(res => {
-          statusEl.textContent = res.ok ? 'Enemy status updated.' : 'Failed to update.';
-        })
-        .catch(() => {
-          statusEl.textContent = 'Error occurred.';
-        });
-    }
-
-    function toggleLayout() {
-      const container = document.getElementById('factionContainer');
-      container.classList.toggle('horizontal-layout');
-      container.classList.toggle('vertical-layout');
-    }
-
-    function updateFactionData() {
-      fetch('/auth/fetch-faction-live', { method: 'POST' });
-      fetch('/auth/fetch-enemy-live', { method: 'POST' });
-      const now = new Date();
-      document.getElementById('updateTime').textContent = now.toLocaleTimeString();
-    }
-
-    setInterval(updateFactionData, 10000);
-    setInterval(updateCountdowns, 1000);
-    updateCountdowns();
-  </script>
 </body>
 
 </html>
