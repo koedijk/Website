@@ -40,32 +40,40 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
-    updates.forEach(member => {
-      const safeId = member.name.replace(/[^a-zA-Z0-9]/g, '');
-      const row = document.querySelector(`tr[data-name="${safeId}"]`);
-      if (!row) return;
+socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
+  updates.forEach(member => {
+    const safeId = member.name.replace(/[^a-zA-Z0-9]/g, '');
+    const row = document.querySelector(`tr[data-name="${safeId}"]`);
+    if (!row) return;
 
-      const claimedByCell = row.querySelector('.claimed-by');
-      const claimCell = row.querySelector('.claim-action');
+    const claimedByCell = row.querySelector('.claimed-by');
+    const claimCell = row.querySelector('.claim-action');
+    console.log(member.status);
+    const isStillClaimable =
+      member.status === 'Okay' ||
+      member.status?.startsWith('Abroad in') ||
+      (member.status === 'Hospital' &&
+        member.statusUntil &&
+        (member.statusUntil * 1000 - Date.now()) < 300000);
 
-      // Clear claim if status changed
-      if (claimedByCell && claimedByCell.textContent !== '-' && member.status !== 'Hospital') {
-        claimedByCell.textContent = '-';
-        if (claimCell) {
-          claimCell.innerHTML = `
-                    <form method="POST" action="/auth/claim">
-                        <input type="hidden" name="name" value="${member.name}">
-                        <button type="submit">Claim</button>
-                    </form>
-                `;
-        }
+    // Cancel claim only if member is no longer claimable
+    if (claimedByCell && claimedByCell.textContent !== '-' && !isStillClaimable) {
+      claimedByCell.textContent = '-';
+      if (claimCell) {
+        claimCell.innerHTML = `
+          <form method="POST" action="/auth/claim">
+            <input type="hidden" name="name" value="${member.name}">
+            <button type="submit">Claim</button>
+          </form>
+        `;
       }
-    });
-
-    updateDOM('tr', updates);
-    document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
+    }
   });
+
+  updateDOM('tr', updates);
+  document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
+});
+
 
   socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
     const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
