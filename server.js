@@ -58,6 +58,11 @@ io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
 
+app.use('/public/dashboard.js', (req, res) => {
+  res.status(403).send('Access denied');
+});
+
+
 
 
 let totalConnections = 0;

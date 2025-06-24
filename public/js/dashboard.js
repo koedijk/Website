@@ -25,10 +25,10 @@ function updateDOM(selector, updates) {
           timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
 						 
         } else {
-          timerCell.textContent = '5';
+          timerCell.textContent = '-';
         }
       } else {
-        timerCell.textContent = '6';
+        timerCell.textContent = '-';
       }
 });
 }
@@ -169,5 +169,58 @@ document.addEventListener('DOMContentLoaded', () => {
     container.classList.remove('vertical-layout');
     container.classList.add('horizontal-layout');
   }
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('table').forEach(table => {
+    const tbody = table.querySelector('tbody');
+    const originalRows = Array.from(tbody.querySelectorAll('tr'));
+    table.dataset.originalOrder = JSON.stringify(originalRows.map(row => row.outerHTML));
+  });
+
+  document.querySelectorAll('th[data-sort]').forEach(header => {
+    header.classList.add('sortable');
+    header.dataset.sortState = 'none';
+
+    header.addEventListener('click', () => {
+      const table = header.closest('table');
+      const tbody = table.querySelector('tbody');
+      const index = Array.from(header.parentNode.children).indexOf(header);
+
+      // Determine next sort state
+      const currentState = header.dataset.sortState;
+      //const nextState = currentState === 'none' ? 'asc' : currentState === 'asc' ? 'desc' : 'none';
+      const nextState = currentState === 'none' ? 'desc' : currentState === 'desc' ? 'asc' : 'none';
+
+      // Reset all headers except the one clicked
+      header.parentNode.querySelectorAll('th').forEach(th => {
+        if (th !== header) {
+          th.classList.remove('asc', 'desc');
+          th.dataset.sortState = 'none';
+        }
+      });
+
+      // Apply new sort state
+      header.dataset.sortState = nextState;
+      header.classList.remove('asc', 'desc');
+      if (nextState !== 'none') header.classList.add(nextState);
+
+      if (nextState === 'none') {
+        // Restore original order
+        const originalHTML = JSON.parse(table.dataset.originalOrder);
+        tbody.innerHTML = originalHTML.join('');
+      } else {
+        // Sort rows
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+          const cellA = a.children[index].textContent.trim().toLowerCase();
+          const cellB = b.children[index].textContent.trim().toLowerCase();
+          return nextState === 'asc'
+            ? cellA.localeCompare(cellB, undefined, { numeric: true })
+            : cellB.localeCompare(cellA, undefined, { numeric: true });
+        });
+        rows.forEach(row => tbody.appendChild(row));
+      }
+    });
+  });
 });
 

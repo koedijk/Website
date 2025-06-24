@@ -185,21 +185,37 @@ button:hover {
   color: #666;
 }
 .status-okay {
-  color: green;
+  color: #678C00;
   font-weight: bold;
 }
 
 .status-hospital {
-  color: red;
+  color: #E03131;
   font-weight: bold;
 }
 
 .status-other {
-  color: cyan;
+  color: #0C8599;
   font-weight: bold;
 }
 
 .timer span.countdown {
-  color: red;
+  color: #E03131;
   font-weight: bold;
+}
+th.sortable::after {
+  content: " ⇅";
+  font-size: 0.8em;
+  color: #aaa;
+  margin-left: 5px;
+}
+
+th.sortable.asc::after {
+  content: " ↑";
+  color: #000;
+}
+
+th.sortable.desc::after {
+  content: " ↓";
+  color: #000;
 }

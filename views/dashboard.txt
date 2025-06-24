@@ -43,10 +43,9 @@
         <table>
           <thead>
             <tr>
-<th data-sort="name" class="sortable">Name</th>
-<th data-sort="status" class="sortable">Status</th>
-<th data-sort="timer" class="sortable">Timer</th>
-
+              <th>Name</th>
+              <th>Status</th>
+              <th>Timer</th>
             </tr>
           </thead>
           <tbody>
@@ -86,12 +85,11 @@
         <table>
           <thead>
             <tr>
-<th data-sort="name" class="sortable">Name</th>
-<th data-sort="status" class="sortable">Status</th>
-<th data-sort="timer" class="sortable">Timer</th>
-<th data-sort="claimed" class="sortable">Claimed By</th>
-<th>Action</th>
-
+              <th>Name</th>
+              <th>Status</th>
+              <th>Timer</th>
+              <th>Claimed By</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -100,17 +98,18 @@
                 <td>
                   <%= member.name %>
                 </td>
-<td class="<% if (member.statusState === 'Okay') { %>status-okay<% } 
-else if (member.statusState === 'Hospital') { %>status-hospital<% } 
-else { %>status-other<% } %>">
-  <% if (['Hospital', 'Jail'].includes(member.statusState)) { %>
-<%= member.statusState %>
-  <% } else if (member.status) { %>
-<%= member.status %>
-  <% } else { %>
-Unknown
-  <% } %>
-</td>
+                <td class="status 
+  <% if (member.statusState === 'Okay') { %>status-okay<% } 
+     else if (member.statusState === 'Hospital') { %>status-hospital<% } 
+     else { %>status-other<% } %>">
+                  <% if (['Hospital', 'Jail' ].includes(member.statusState)) { %>
+                    <%= member.statusState %>
+                      <% } else if (member.status && member.status.description) { %>
+                        <%= member.status.description %>
+                          <% } else { %>
+                            Unknown
+                            <% } %>
+                </td>
                 <td class="timer">
                   <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
                     <span class="countdown" data-until="<%= member.statusUntil %>"></span>

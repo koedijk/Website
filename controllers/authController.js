@@ -35,7 +35,6 @@ const shortenDestination = (desc) => {
   else if (fromMatch && map[fromMatch[1]]) {
     return `Return from - ${map[fromMatch[1]]}`;
   }
-
   return desc;
 };
 
@@ -68,6 +67,7 @@ exports.postLogin = async (req, res) => {
     );
     console.log(api_key);
     const check = await apicalls.checkApi(api_key);
+    console.log(check);
     const currentFactionId = check.basic.id;
 
     if (allowedResults.length > 0) {
@@ -160,20 +160,20 @@ exports.getDashboard = async (req, res) => {
     const myFactionId = req.session.factionId;
 
     const factionMembersRaw = await apicalls.getFactionMembers(apiKey);
-const members = Object.values(factionMembersRaw).map(member => {
-  const rawDescription = member.status?.description || 'Unknown';
-  const statusDescription = shortenDestination(rawDescription);
-  const statusState = member.status?.state || 'Unknown';
-  return {
-    ...member,
-    status: {
-      description: statusDescription,
-      until: member.status?.until ? parseInt(member.status.until, 10) : null
-    },
-    statusState,
-    statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null
-  };
-});
+    const members = Object.values(factionMembersRaw).map(member => {
+      const rawDescription = member.status?.description || 'Unknown';
+      const statusDescription = shortenDestination(rawDescription);
+      const statusState = member.status?.state || 'Unknown';
+      return {
+        ...member,
+        status: {
+          description: statusDescription,
+          until: member.status?.until ? parseInt(member.status.until, 10) : null
+        },
+        statusState,
+        statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null
+      };
+    });
 
     const rankedWars = await apicalls.getRankedWars(apiKey);
     let selectedWar = rankedWars.find(war => war.winner === null);
@@ -218,20 +218,20 @@ const members = Object.values(factionMembersRaw).map(member => {
       );
     });
 
-const enemyMembers = enemyMembersRaw.map(member => {
-  const rawDescription = member.status?.description || 'Unknown';
-  const status = shortenDestination(rawDescription);
-  const statusState = member.status?.state || 'Unknown';
-  return {
-    name: member.name,
-    tornid: member.id,
-    factionid: enemyFactionId,
-    status,
-    statusState,
-    statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null,
-    claimedBy: claims[member.name] || null
-  };
-});
+    const enemyMembers = enemyMembersRaw.map(member => {
+      const rawDescription = member.status?.description || 'Unknown';
+      const status = shortenDestination(rawDescription);
+      const statusState = member.status?.state || 'Unknown';
+      return {
+        name: member.name,
+        tornid: member.id,
+        factionid: enemyFactionId,
+        status,
+        statusState,
+        statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null,
+        claimedBy: claims[member.name] || null
+      };
+    });
     res.render('dashboard', {
       tornName: req.session.tornName,
       tornId: req.session.tornId,
@@ -267,18 +267,18 @@ exports.fetchFactionLive = async (req, res) => {
   try {
     const members = await apicalls.getFactionMembers(apiKey);
     const updates = Object.values(members).map(member => {
-  const rawDescription = member.status?.description || 'Unknown';
-  const status = shortenDestination(rawDescription);
-  const statusState = member.status?.state || 'Unknown';
-  return {
-    name: member.name,
-    tornid: member.id,
-    factionid: myFactionId,
-    status,
-    statusState,
-    statusUntil: member.status?.until
-  };
-});
+      const rawDescription = member.status?.description || 'Unknown';
+      const status = shortenDestination(rawDescription);
+      const statusState = member.status?.state || 'Unknown';
+      return {
+        name: member.name,
+        tornid: member.id,
+        factionid: myFactionId,
+        status,
+        statusState,
+        statusUntil: member.status?.until
+      };
+    });
 
 
     updates.forEach(member => {
@@ -335,40 +335,23 @@ exports.fetchEnemyLive = async (req, res) => {
       console.log('No war found');
       return res.sendStatus(204);
     }
-
+    
     const enemyFaction = selectedWar.factions.find(f => f.id !== parseInt(myFactionId));
     const enemyFactionId = enemyFaction.id;
-    db.query(
-      'DELETE FROM enemy_faction_members WHERE war_type = ? AND war_with_factionid = ? AND factionid != ?',
-      [warType, myFactionId, enemyFactionId],
-      (err) => {
-        if (err) console.error('Cleanup error:', err);
-      }
-    );
-
     const enemyData = await apicalls.getFactionBasic(apiKey, enemyFactionId);
     const updates = Object.values(enemyData.members).map(member => {
-  let status = member.status?.state || 'Unknown';
-  if (status === 'Traveling') {
-    const destination = member.travel?.destination;
-    const origin = member.travel?.origin;
-    if (origin === 'Torn' && destination) {
-      status = `To ${shortenDestination(destination)}`;
-    } else if (origin && origin !== 'Torn') {
-      status = `Return from ${shortenDestination(origin)}`;
-    }
-  }
-  const statusState = member.status?.state || 'Unknown';
-  return {
-    name: member.name,
-    tornid: member.id,
-    factionid: enemyFactionId,
-    status,
-    statusState,
-    statusUntil: member.status?.until
-  };
-});
-
+    const rawDescription = member.status?.description || 'Unknown';
+	  const status = shortenDestination(rawDescription);
+    const statusState = member.status?.state || 'Unknown';
+      return {
+        name: member.name,
+        tornid: member.id,
+        factionid: enemyFactionId,
+        status,
+        statusState,
+        statusUntil: member.status?.until
+      };
+    });
     updates.forEach(member => {
       db.query(`
                 INSERT INTO enemy_faction_members (
