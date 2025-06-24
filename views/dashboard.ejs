@@ -16,6 +16,9 @@
     <p id="lastUpdated">
       Last updated: <span id="updateTime">-</span>
     </p>
+    <div class="logout">
+      <a href="/auth/logout">Logout</a>
+    </div>
 
     <h1>Welcome to Your Dashboard</h1>
     <p><strong>Name:</strong>
@@ -28,58 +31,7 @@
       <%= factionId %>
     </p>
 
-    <div class="logout">
-      <a href="/auth/logout">Logout</a>
-    </div>
-
-    <div class="layout-toggle">
-      <button id="layout-toggle" type="button">Toggle Layout</button>
-    </div>
-
-    <div id="factionContainer" class="horizontal-layout">
-      <!-- Your Faction -->
-      <div class="faction-block">
-        <h2>Your Faction</h2>
-        <table>
-          <thead>
-            <tr>
-<th data-sort="name" class="sortable">Name</th>
-<th data-sort="status" class="sortable">Status</th>
-<th data-sort="timer" class="sortable">Timer</th>
-
-            </tr>
-          </thead>
-          <tbody>
-            <% Object.values(members).forEach(member=> { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
-              <tr data-name="<%= safeId %>">
-                <td>
-                  <%= member.name %>
-                </td>
-                <td class="status 
-  <% if (member.statusState === 'Okay') { %>status-okay<% } 
-     else if (member.statusState === 'Hospital') { %>status-hospital<% } 
-     else { %>status-other<% } %>">
-                  <% if (['Hospital', 'Jail' ].includes(member.statusState)) { %>
-                    <%= member.statusState %>
-                      <% } else if (member.status && member.status.description) { %>
-                        <%= member.status.description %>
-                          <% } else { %>
-                            Unknown
-                            <% } %>
-                </td>
-
-                <td class="timer">
-                  <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
-                    <span class="countdown" data-until="<%= member.statusUntil %>"></span>
-                    <% } else { %>-<% } %>
-                </td>
-              </tr>
-              <% }) %>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Enemy Faction -->
+    <!-- Enemy Faction -->
       <div class="faction-block">
         <h2>Enemy Faction: <%= enemyFactionName %>
         </h2>

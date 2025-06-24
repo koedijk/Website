@@ -8,7 +8,6 @@ body {
   justify-content: center;
   align-items: flex-start;
 }
-
 /* === Dashboard Container === */
 .dashboard {
   background: #fff;
@@ -57,7 +56,6 @@ tr:hover {
   background-color: #f9f9f9;
 }
 
-/* === Buttons === */
 button {
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
@@ -76,27 +74,6 @@ button {
 button:hover {
   background-color: #0056b3;
 }
-
-/* === Layout Toggle === */
-.layout-toggle {
-  text-align: center;
-  margin: 1.5rem 0;
-}
-
-/* === Faction Layouts === */
-
-.horizontal-layout {
-  display: flex;
-  gap: 2rem;
-  flex-direction: row;
-}
-
-.vertical-layout {
-  display: flex;
-  gap: 2rem;
-  flex-direction: column;
-}
-
 
 .faction-block {
   flex: 1;
@@ -118,8 +95,8 @@ button:hover {
 
 /* === Logout Button === */
 .logout {
-  margin-top: 2rem;
-  text-align: center;
+  margin-top: 1rem;
+  text-align: right;
 }
 
 .logout a {

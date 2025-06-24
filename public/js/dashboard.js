@@ -1,175 +1,147 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const socket = io();
+  const socket = io();
 
-function updateDOM(selector, updates) {
-							
-  updates.forEach(member => {
-    const safeName = member.name.replace(/[^a-zA-Z0-9]/g, '');
-    const row = document.querySelector(`${selector}[data-name="${safeName}"]`);
-    if (!row) return;
+  function updateDOM(selector, updates) {
 
-    // Update status cell
-    const statusCell = row.querySelector('.status');
-    if (statusCell) {
-      statusCell.textContent = member.status;
-    }
-    // Update timer cell
-    if (!timerCell) {
-  console.warn(`Missing .timer cell for ${member.name}`);
-}
+    updates.forEach(member => {
+      const safeName = member.name.replace(/[^a-zA-Z0-9]/g, '');
+      const row = document.querySelector(`${selector}[data-name="${safeName}"]`);
+      if (!row) return;
 
-    const timerCell = row.querySelector('.timer');
-    if (timerCell) {
-      if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {	
+      // Update status cell
+      const statusCell = row.querySelector('.status');
+      if (statusCell) {
+        statusCell.textContent = member.status;
+      }
+      // Update timer cell
+      if (!timerCell) {
+        console.warn(`Missing .timer cell for ${member.name}`);
+      }
+
+      const timerCell = row.querySelector('.timer');
+      if (timerCell) {
+        if (['Hospital', 'Jail'].includes(member.status) && member.statusUntil) {
           timerCell.innerHTML = `<span class="countdown" data-until="${member.statusUntil}"></span>`;
-						 
+
         } else {
           timerCell.textContent = '-';
         }
       } else {
         timerCell.textContent = '-';
       }
-});
-}
-
-
-    socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
-        updateDOM('tr', updates);
-        document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
     });
+  }
 
 
-socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
+  socket.on('factionStatusUpdate', ({ updates, lastUpdated }) => {
+    updateDOM('tr', updates);
+    document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
+  });
+
+
+  socket.on('enemyStatusUpdate', ({ updates, lastUpdated }) => {
     updates.forEach(member => {
-        const safeId = member.name.replace(/[^a-zA-Z0-9]/g, '');
-        const row = document.querySelector(`tr[data-name="${safeId}"]`);
-        if (!row) return;
+      const safeId = member.name.replace(/[^a-zA-Z0-9]/g, '');
+      const row = document.querySelector(`tr[data-name="${safeId}"]`);
+      if (!row) return;
 
-        const claimedByCell = row.querySelector('.claimed-by');
-        const claimCell = row.querySelector('.claim-action');
+      const claimedByCell = row.querySelector('.claimed-by');
+      const claimCell = row.querySelector('.claim-action');
 
-        // Clear claim if status changed
-        if (claimedByCell && claimedByCell.textContent !== '-' && member.status !== 'Hospital') {
-            claimedByCell.textContent = '-';
-            if (claimCell) {
-                claimCell.innerHTML = `
+      // Clear claim if status changed
+      if (claimedByCell && claimedByCell.textContent !== '-' && member.status !== 'Hospital') {
+        claimedByCell.textContent = '-';
+        if (claimCell) {
+          claimCell.innerHTML = `
                     <form method="POST" action="/auth/claim">
                         <input type="hidden" name="name" value="${member.name}">
                         <button type="submit">Claim</button>
                     </form>
                 `;
-            }
         }
+      }
     });
 
     updateDOM('tr', updates);
     document.getElementById('updateTime').textContent = new Date(lastUpdated * 1000).toLocaleTimeString();
-});
+  });
 
-    socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
-        const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
-        const row = document.querySelector(`tr[data-name="${safeId}"]`);
-        console.log('Received claimUpdate');
-        if (!row) return;
+  socket.on('claimUpdate', ({ name, claimedBy, status, statusUntil }) => {
+    const safeId = name.replace(/[^a-zA-Z0-9]/g, '');
+    const row = document.querySelector(`tr[data-name="${safeId}"]`);
+    console.log('Received claimUpdate');
+    if (!row) return;
 
-        // Update claim cell
-        const claimCell = row.querySelector('.claim-action');
-        const claimedByCell = row.querySelector('.claimed-by');
-        if (claimCell) {
-            if (claimedBy) {
-                claimCell.innerHTML = `
+    // Update claim cell
+    const claimCell = row.querySelector('.claim-action');
+    const claimedByCell = row.querySelector('.claimed-by');
+    if (claimCell) {
+      if (claimedBy) {
+        claimCell.innerHTML = `
 			<form method="POST" action="/auth/cancel-claim">
                         <input type="hidden" name="name" value="${name}">
                         <button type="submit">Cancel</button>
                     </form>
                 `;
-                if (claimedByCell) claimedByCell.textContent = claimedBy;
-            } else {
-                claimCell.innerHTML = `
+        if (claimedByCell) claimedByCell.textContent = claimedBy;
+      } else {
+        claimCell.innerHTML = `
                     <form method="POST" action="/auth/claim">
                         <input type="hidden" name="name" value="${name}">
                         <button type="submit">Claim</button>
                     </form>
                 `;
-                if (claimedByCell) claimedByCell.textContent = '-';
-            }
-        }
-
-        // Update status cell
-        const statusCell = row.querySelector('.status');
-        if (statusCell && status) {
-            statusCell.textContent = status;
-        }
-
-        // Update timer cell
-        const timerCell = row.querySelector('timer');
-        if (timerCell) {
-            if (['Hospital', 'Jail'].includes(status) && statusUntil) {
-                timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
-            } else {
-                timerCell.textContent = '-';
-            }
-        }
-    });
-
-function updateCountdowns() {
- const now = Math.floor(Date.now() / 1000);
- document.querySelectorAll('.countdown').forEach(el => {
- const until = parseInt(el.dataset.until, 10);
- const secondsLeft = Math.max(0, until - now);
-
- const hours = Math.floor(secondsLeft / 3600);
- const minutes = Math.floor((secondsLeft % 3600) / 60);
- const seconds = secondsLeft % 60;
-
- el.textContent = `${hours}h ${minutes}m ${seconds}s`;
-
- // If timer just hit 0, refresh enemy data
- if (secondsLeft === 0 && el.closest('tr')?.parentElement?.parentElement?.parentElement?.previousElementSibling?.textContent.includes('Enemy Faction')) {
- fetch('/auth/fetch-enemy-live', { method: 'POST' });
- }
- });
-}
-																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																														  
-    function updateFactionData() {
-        fetch('/auth/fetch-faction-live', { method: 'POST' });
-        fetch('/auth/fetch-enemy-live', { method: 'POST' });
-        const now = new Date();
-        document.getElementById('updateTime').textContent = now.toLocaleTimeString();
+        if (claimedByCell) claimedByCell.textContent = '-';
+      }
     }
 
-    setInterval(updateFactionData, 10000);
-    setInterval(updateCountdowns, 1000);
-    updateCountdowns();
-});
+    // Update status cell
+    const statusCell = row.querySelector('.status');
+    if (statusCell && status) {
+      statusCell.textContent = status;
+    }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const toggleButton = document.getElementById('layout-toggle');
-  const container = document.getElementById('factionContainer');
-
-  toggleButton.addEventListener('click', () => {
-    if (container.classList.contains('horizontal-layout')) {
-      container.classList.remove('horizontal-layout');
-      container.classList.add('vertical-layout');
-      localStorage.setItem('layout', 'vertical');
-    } else {
-      container.classList.remove('vertical-layout');
-      container.classList.add('horizontal-layout');
-      localStorage.setItem('layout', 'horizontal');
+    // Update timer cell
+    const timerCell = row.querySelector('timer');
+    if (timerCell) {
+      if (['Hospital', 'Jail'].includes(status) && statusUntil) {
+        timerCell.innerHTML = `<span class="countdown" data-until="${statusUntil}"></span>`;
+      } else {
+        timerCell.textContent = '-';
+      }
     }
   });
 
-  // Load saved layout
-  const savedLayout = localStorage.getItem('layout');
-  if (savedLayout === 'vertical') {
-    container.classList.remove('horizontal-layout');
-    container.classList.add('vertical-layout');
-  } else {
-    container.classList.remove('vertical-layout');
-    container.classList.add('horizontal-layout');
+  function updateCountdowns() {
+    const now = Math.floor(Date.now() / 1000);
+    document.querySelectorAll('.countdown').forEach(el => {
+      const until = parseInt(el.dataset.until, 10);
+      const secondsLeft = Math.max(0, until - now);
+
+      const hours = Math.floor(secondsLeft / 3600);
+      const minutes = Math.floor((secondsLeft % 3600) / 60);
+      const seconds = secondsLeft % 60;
+
+      el.textContent = `${hours}h ${minutes}m ${seconds}s`;
+
+      // If timer just hit 0, refresh enemy data
+      if (secondsLeft === 0 && el.closest('tr')?.parentElement?.parentElement?.parentElement?.previousElementSibling?.textContent.includes('Enemy Faction')) {
+        fetch('/auth/fetch-enemy-live', { method: 'POST' });
+      }
+    });
   }
+  function updateFactionData() {
+    fetch('/auth/fetch-enemy-live', { method: 'POST' });
+    const now = new Date();
+    document.getElementById('updateTime').textContent = now.toLocaleTimeString();
+  }
+
+  setInterval(updateFactionData, 10000);
+  setInterval(updateCountdowns, 1000);
+  updateCountdowns();
 });
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('table').forEach(table => {
     const tbody = table.querySelector('tbody');
