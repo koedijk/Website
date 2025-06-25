@@ -55,13 +55,13 @@
 <td class="<% if (member.statusState === 'Okay') { %>status-okay<% } 
 else if (member.statusState === 'Hospital') { %>status-hospital<% } 
 else { %>status-other<% } %>">
-  <% if (['Hospital', 'Jail'].includes(member.statusState)) { %>
+<% if (['Hospital', 'Jail'].includes(member.statusState)) { %>
 <%= member.statusState %>
-  <% } else if (member.status) { %>
+<% } else if (member.status) { %>
 <%= member.status %>
-  <% } else { %>
+<% } else { %>
 Unknown
-  <% } %>
+<% } %>
 </td>
                 <td class="timer">
                   <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
