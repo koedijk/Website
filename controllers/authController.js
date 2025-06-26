@@ -255,13 +255,13 @@ exports.fetchEnemyLive = async (req, res) => {
     updates.forEach(member => {
       db.query(`
                 INSERT INTO enemy_faction_members (
-                    name, tornid, factionid, laststatus, status_until, war_type, war_with_factionid, changedate
+                    name, tornid, factionid, current_status, current_until, war_type, war_with_factionid, changedate
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     name = VALUES(name),
-                    laststatus = VALUES(laststatus),
-                    status_until = VALUES(status_until),
+                    current_status = VALUES(current_status),
+                    current_until = VALUES(current_until),
                     war_with_factionid = VALUES(war_with_factionid),
                     changedate = NOW()
             `, [
@@ -287,7 +287,7 @@ exports.fetchEnemyLive = async (req, res) => {
 };
 // Claim and cancel
 exports.claim = (req, res) => {
-  const { name } = req.body;
+  const { name } = req.body;  
   const claimedBy = req.session.tornName;
   const myFactionId = req.session.factionId;
   const io = req.app.get('io');
@@ -315,7 +315,7 @@ exports.claim = (req, res) => {
       }
 
       db.query(
-        'UPDATE enemy_faction_members SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
+        'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND war_with_factionid = ?',
         [claimedBy, name, myFactionId],
         (err) => {
           if (err) {
@@ -357,7 +357,7 @@ exports.cancelClaim = (req, res) => {
 
         // Fetch updated status and statusUntil
         db.query(
-          `SELECT laststatus AS status, status_until AS statusUntil 
+          `SELECT current_status AS status, current_until AS statusUntil 
            FROM enemy_faction_members 
            WHERE name = ?`,
           [name],
