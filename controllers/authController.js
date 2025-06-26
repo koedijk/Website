@@ -170,7 +170,7 @@ exports.getDashboard = async (req, res) => {
       });
     }
     const enemyFaction = selectedWar.factions.find(f => f.id !== parseInt(myFactionId));
-    const enemyFactionId = enemyFaction.id;
+    const enemyFactionId = '53469'//enemyFaction.id;
     const enemy = await apicalls.getFactionBasic(apiKey, enemyFactionId);
     const enemyMembersRaw = Object.values(enemy.members);
     const claims = await new Promise((resolve, reject) => {
@@ -218,7 +218,6 @@ exports.getDashboard = async (req, res) => {
 };
 // Fetch Enemy
 exports.fetchEnemyLive = async (req, res) => {
-
   if (!req.session || !req.session.apiKey) {
     return res.status(401).send('Session expired');
   }
@@ -226,45 +225,82 @@ exports.fetchEnemyLive = async (req, res) => {
   const encryptedKey = req.session.apiKey;
   const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
   const myFactionId = req.session.factionId;
+
   try {
     const rankedWars = await apicalls.getRankedWars(apiKey);
     let selectedWar = rankedWars.find(war => war.winner === null);
     let warType = 'current';
+
     if (!selectedWar) {
       selectedWar = rankedWars.find(war => war.winner !== null);
       warType = 'last';
     }
+
     if (!selectedWar) {
       console.log('No war found');
       return res.sendStatus(204);
     }
 
     const enemyFaction = selectedWar.factions.find(f => f.id !== parseInt(myFactionId));
-    const enemyFactionId = enemyFaction.id;
+    const enemyFactionId = '53469'; // Replace with enemyFaction.id if needed
+
     const enemyData = await apicalls.getFactionBasic(apiKey, enemyFactionId);
-    const updates = Object.values(enemyData.members).map(member => {
-      const statusState = member.status?.state || 'Unknown';
-      return {
-        name: member.name,
-        tornid: member.id,
-        factionid: enemyFactionId,
-        statusState,
-        statusUntil: member.status?.until
+    const newMembers = Object.values(enemyData.members).map(member => ({
+      name: member.name,
+      tornid: member.id,
+      factionid: enemyFactionId,
+      statusState: member.status?.state || 'Unknown',
+      statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null
+    }));
+
+    // Fetch current data from the database
+    const [dbResults] = await new Promise((resolve, reject) => {
+      db.query(
+        `SELECT name, current_status AS statusState, current_until AS statusUntil
+         FROM enemy_faction_members
+         WHERE war_type = ? AND war_with_factionid = ?`,
+        [warType, myFactionId],
+        (err, results) => {
+          if (err) return reject(err);
+          resolve([results]);
+        }
+      );
+    });
+
+    const dbMap = {};
+    dbResults.forEach(row => {
+      dbMap[row.name] = {
+        statusState: row.statusState,
+        statusUntil: row.statusUntil ? parseInt(row.statusUntil, 10) : null
       };
     });
-    updates.forEach(member => {
+
+    // Compare and filter only changed members
+    const changedMembers = newMembers.filter(member => {
+      const existing = dbMap[member.name];
+      return (
+        !existing ||
+        existing.statusState !== member.statusState ||
+        existing.statusUntil !== member.statusUntil
+      );
+    });
+
+    if (changedMembers.length === 0) {
+      return res.sendStatus(204); // No changes
+    }
+
+    // Update only changed members in the database
+    changedMembers.forEach(member => {
       db.query(`
-                INSERT INTO enemy_faction_members (
-                    name, tornid, factionid, current_status, current_until, war_type, war_with_factionid, changedate
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-                ON DUPLICATE KEY UPDATE
-                    name = VALUES(name),
-                    current_status = VALUES(current_status),
-                    current_until = VALUES(current_until),
-                    war_with_factionid = VALUES(war_with_factionid),
-                    changedate = NOW()
-            `, [
+        INSERT INTO enemy_faction_members (
+          name, tornid, factionid, current_status, current_until, war_type, war_with_factionid, changedate
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          current_status = VALUES(current_status),
+          current_until = VALUES(current_until),
+          changedate = NOW()
+      `, [
         member.name,
         member.tornid,
         member.factionid,
@@ -273,25 +309,30 @@ exports.fetchEnemyLive = async (req, res) => {
         warType,
         myFactionId
       ], (err) => {
-        if (err) console.error('DB insert error:', err);
+        if (err) console.error('DB update error:', err);
       });
     });
 
-    const io = req.app.get('io');
-    io.to(`faction_${myFactionId}`).emit('enemyStatusUpdate', updates);
-    res.sendStatus(200);
+    res.json({
+      updates: changedMembers,
+      lastUpdated: Math.floor(Date.now() / 1000)
+    });
+
   } catch (err) {
     console.error('Live update error:', err);
     res.sendStatus(500);
   }
 };
+
+
 // Claim and cancel
 exports.claim = (req, res) => {
   const { name } = req.body;  
   const claimedBy = req.session.tornName;
   const myFactionId = req.session.factionId;
   const io = req.app.get('io');
-
+  console.log(name);
+  console.log(myFactionId);
   db.query(
     'SELECT * FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
     [name, myFactionId],
@@ -300,39 +341,32 @@ exports.claim = (req, res) => {
         console.error('Claim lookup error:', err);
         return res.status(500).send('Claim lookup error');
       }
-
       const member = results[0];
-      const now = Math.floor(Date.now() / 1000);
-      const status = member.laststatus;
-      const statusUntil = member.status_until ? Math.floor(new Date(member.status_until).getTime() / 1000) : null;
-
+      const now = Math.floor(Date.now() / 1000); 
+      const status = member.current_status;
+      const statusUntil = member.current_until ? Math.floor(new Date(member.current_until).getTime() / 1000) : null;
       const canClaim =
         status === 'Okay' ||
         (status === 'Hospital' && statusUntil && statusUntil - now < 300);
-
+      console.log(status);  
       if (!canClaim) {
         return res.status(400).send('Cannot claim this member');
       }
-
+      console.log('Claim : ' + claimedBy, name, myFactionId);
       db.query(
-        'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND war_with_factionid = ?',
+        'UPDATE enemy_faction_members SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
         [claimedBy, name, myFactionId],
         (err) => {
           if (err) {
             console.error('Claim update error:', err);
             return res.status(500).send('Claim update error');
           }
-
-
-          const room = `faction_${req.session.factionId}`;
-          io.to(room).emit('claimUpdate', {
+          io.to(`faction_${req.session.factionId}`).emit('claimUpdate', {
             name,
             claimedBy,
             status,
             statusUntil: member.status_until
           });
-
-
           res.redirect('/auth/dashboard');
         }
       );
@@ -367,8 +401,7 @@ exports.cancelClaim = (req, res) => {
               return res.redirect('/auth/dashboard');
             }
             const { status, statusUntil } = results[0];
-            const room = `faction_${req.session.factionId}`;
-            io.to(room).emit('claimUpdate', {
+            io.to(`faction_${req.session.factionId}`).emit('claimUpdate', {
               name,
               claimedBy: null,
               status,
