@@ -7,7 +7,6 @@ function updateDOM(selector, updates) {
     const row = document.querySelector(`${selector}[data-name="${safeName}"]`);
     if (!row) return;
 
-    // ✅ Update status cell (2nd <td>)
     const statusCell = row.children[1];
     if (statusCell) {
       statusCell.textContent = member.statusState || '-';
@@ -19,7 +18,6 @@ function updateDOM(selector, updates) {
           : 'status-other';
     }
 
-    // ✅ Update timer cell
     const timerCell = row.querySelector('.timer');
     if (timerCell) {
       if (['Hospital', 'Jail'].includes(member.statusState) && member.statusUntil) {

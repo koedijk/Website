@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
@@ -10,7 +9,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/dashboard.js" defer></script>
 </head>
-
 <body data-faction-id="<%= factionId %>">
   <div class="dashboard">
     <p id="lastUpdated">
@@ -21,77 +19,67 @@
     </div>
 
     <h1>Welcome to Your Dashboard</h1>
-    <p><strong>Name:</strong>
-      <%= tornName %>
-    </p>
-    <p><strong>Torn ID:</strong>
-      <%= tornId %>
-    </p>
-    <p><strong>Faction ID:</strong>
-      <%= factionId %>
-    </p>
+    <p><strong>Name:</strong> <%= tornName %></p>
+    <p><strong>Torn ID:</strong> <%= tornId %></p>
+    <p><strong>Faction ID:</strong> <%= factionId %></p>
 
     <!-- Enemy Faction -->
-      <div class="faction-block">
-        <h2>Enemy Faction: <%= enemyFactionName %>
-        </h2>
-        <table>
-          <thead>
-            <tr>
-<th data-sort="name" class="sortable">Name</th>
-<th data-sort="status" class="sortable">Status</th>
-<th data-sort="timer" class="sortable">Timer</th>
-<th data-sort="claimed" class="sortable">Claimed By</th>
-<th>Action</th>
-
-            </tr>
-          </thead>
-          <tbody>
-            <% enemyMembers.forEach(member=> { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
-              <tr data-name="<%= safeId %>">
-                <td>
-                  <%= member.name %>
-                </td>
-<td class="<% if (member.statusState === 'Okay') { %>status-okay<% } 
-else if (member.statusState === 'Hospital') { %>status-hospital<% } 
-else { %>status-other<% } %>">
-  <% if (['Hospital', 'Jail'].includes(member.statusState)) { %>
-<%= member.statusState %>
-  <% } else if (member.status) { %>
-<%= member.status %>
-  <% } else { %>
-Unknown
-  <% } %>
-</td>
-                <td class="timer">
-                  <% if (['Hospital', 'Jail' ].includes(member.statusState) && member.statusUntil) { %>
-                    <span class="countdown" data-until="<%= member.statusUntil %>"></span>
-                    <% } else { %>-<% } %>
-                </td>
-                <td class="claimed-by">
-                  <%= member.claimedBy || '-' %>
-                </td>
-                <td class="claim-action">
-                  <% if (!member.claimedBy && (member.status==='Okay' || (member.statusState==='Hospital' &&
-                    member.statusUntil && (member.statusUntil * 1000 - Date.now()) < 300000))) { %>
-                    <form method="POST" action="/auth/claim">
-                      <input type="hidden" name="name" value="<%= member.name %>">
-                      <button type="submit">Claim</button>
-                    </form>
-                    <% } else if (member.claimedBy) { %>
-                      <form method="POST" action="/auth/cancel-claim">
-                        <input type="hidden" name="name" value="<%= member.name %>">
-                        <button type="submit">Cancel</button>
-                      </form>
-                      <% } %>
-                </td>
-              </tr>
-              <% }) %>
-          </tbody>
-        </table>
-      </div>
+    <div class="faction-block">
+      <h2>Enemy Faction: <%= enemyFactionName %></h2>
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="name" class="sortable">Name</th>
+            <th data-sort="status" class="sortable">Status</th>
+            <th data-sort="timer" class="sortable">Timer</th>
+            <th data-sort="claimed" class="sortable">Claimed By</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% enemyMembers.forEach(member => { const safeId = member.name.replace(/[^a-zA-Z0-9]/g, ''); %>
+          <tr data-name="<%= safeId %>">
+            <td><%= member.name %></td>
+            <td class="<% if (member.statusState === 'Okay') { %>status-okay<% } else if (member.statusState === 'Hospital') { %>status-hospital<% } else { %>status-other<% } %>">
+              <% if (['Hospital', 'Jail'].includes(member.statusState)) { %>
+                <%= member.statusState %>
+              <% } else if (member.status) { %>
+                <%= member.status %>
+              <% } else { %>
+                Unknown
+              <% } %>
+            </td>
+            <td class="timer">
+              <% if (['Hospital', 'Jail'].includes(member.statusState) && member.statusUntil) { %>
+                <span class="countdown" data-until="<%= member.statusUntil %>"></span>
+              <% } else { %>-<% } %>
+            </td>
+            <td class="claimed-by"><%= member.claimedBy || '-' %></td>
+            <td class="claim-action">
+              <% 
+                const now = Math.floor(Date.now() / 1000);
+                const isClaimable = (
+                  member.statusState === 'Okay' ||
+                  (member.statusState === 'Hospital' && member.statusUntil && (member.statusUntil - now) < 300)
+                );
+              %>
+              <% if (!member.claimedBy && isClaimable) { %>
+                <form method="POST" action="/auth/claim">
+                  <input type="hidden" name="name" value="<%= member.name %>">
+                  <button type="submit">Claim</button>
+                </form>
+              <% } else if (member.claimedBy) { %>
+                <form method="POST" action="/auth/cancel-claim">
+                  <input type="hidden" name="name" value="<%= member.name %>">
+                  <button type="submit">Cancel</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
     </div>
   </div>
 </body>
-
 </html>
