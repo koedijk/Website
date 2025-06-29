@@ -100,7 +100,6 @@ exports.postLogin = async (req, res) => {
     const tornid = basicinfo.player_id;
     const playername = basicinfo.name;
 
-
     await pool.query(
       `INSERT INTO users (tornid, name, factionid, api_key)
 VALUES (?, ?, ?, ?)
@@ -128,6 +127,13 @@ async function handleLogin(req, res, playername, factionid, tornid, apiKey, pool
     req.session.tornId = tornid;
     req.session.factionId = factionid;
     req.session.apiKey = encrypt(apiKey);
+    const rankedWars = await apicalls.getRankedWars(apiKey);
+    let selectedWar = rankedWars.find(war => war.winner === null);
+    if (!selectedWar) {
+      selectedWar = rankedWars.find(war => war.winner !== null);
+    }
+    req.session.enemyname = selectedWar.factions.find(f => f.id !== parseInt(req.session.factionId)).name
+    req.session.enemyId = selectedWar.factions.find(f => f.id !== parseInt(req.session.factionId)).id;
 
     req.session.save((err) => {
       if (err) {
@@ -147,38 +153,14 @@ exports.getDashboard = async (req, res) => {
     return res.redirect('/auth/login');
   }
   try {
-    const encryptedKey = req.session.apiKey;
-    const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
-    const myFactionId = req.session.factionId;
-
-    const rankedWars = await apicalls.getRankedWars(apiKey);
-    let selectedWar = rankedWars.find(war => war.winner === null);
-    let warType = 'current';
-    if (!selectedWar) {
-      selectedWar = rankedWars.find(war => war.winner !== null);
-      warType = 'last';
-    }
-
-    if (!selectedWar) {
-      return res.render('dashboard', {
-        tornName: req.session.tornName,
-        tornId: req.session.tornId,
-        factionId: req.session.factionId,
-        members,
-        enemyMembers: [],
-        enemyFactionName: 'No enemy faction found',
-        warType
-      });
-    }
-    const enemyFaction = selectedWar.factions.find(f => f.id !== parseInt(myFactionId));
-    const enemyFactionId = enemyFaction.id;
-    const enemy = await apicalls.getFactionBasic(apiKey, enemyFactionId);
+    const apiKey = isHex(req.session.apiKey) ? decrypt(req.session.apiKey) : req.session.apiKey;
+    const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyid);
     const enemyMembersRaw = Object.values(enemy.members);
     const claims = await new Promise((resolve, reject) => {
       db.query(
         `SELECT name, claimed_by FROM enemy_faction_members
-         WHERE war_type = ? AND war_with_factionid = ?`,
-        [warType, myFactionId],
+         WHERE war_with_factionid = ?`,
+        [req.session.factionId],
         (err, results) => {
           if (err) return reject(err);
           const map = {};
@@ -190,27 +172,27 @@ exports.getDashboard = async (req, res) => {
       );
     });
 
-    const enemyMembers = enemyMembersRaw.map(member => {
+    const enemyMembers = enemyMembersRaw.map(member => {      
       const rawDescription = member.status?.description || 'Unknown';
       const status = shortenDestination(rawDescription);
       const statusState = member.status?.state || 'Unknown';
       return {
         name: member.name,
         tornid: member.id,
-        factionid: enemyFactionId,
+        factionid: req.session.enemyId,
         status,
         statusState,
         statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null,
         claimedBy: claims[member.name] || null
       };
     });
+    
     res.render('dashboard', {
       tornName: req.session.tornName,
       tornId: req.session.tornId,
       factionId: req.session.factionId,
       enemyMembers,
-      enemyFactionName: enemyFaction.name,
-      warType
+      enemyFactionName: req.session.enemyname
     });
   } catch (error) {
     console.error('Dashboard error:', error);
@@ -225,42 +207,21 @@ exports.fetchEnemyLive = async (req, res) => {
 
   const encryptedKey = req.session.apiKey;
   const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
-  const myFactionId = req.session.factionId;
 
   try {
-    const rankedWars = await apicalls.getRankedWars(apiKey);
-    let selectedWar = rankedWars.find(war => war.winner === null);
-    let warType = 'current';
-
-    if (!selectedWar) {
-      selectedWar = rankedWars.find(war => war.winner !== null);
-      warType = 'last';
-    }
-
-    if (!selectedWar) {
-      console.log('No war found');
-      return res.sendStatus(204);
-    }
-
-    const enemyFaction = selectedWar.factions.find(f => f.id !== parseInt(myFactionId));
-    const enemyFactionId = enemyFaction.id;
-    const enemyData = await apicalls.getFactionBasic(apiKey, enemyFactionId);
+    const enemyData = await apicalls.getFactionBasic(apiKey, req.session.enemyid);
     const io = req.app.get('io');
-
     const updates = [];
-
     for (const member of Object.values(enemyData.members)) {
       const name = member.name;
       const tornid = member.id;
-      const factionid = enemyFactionId;
       const newStatus = member.status?.state || 'Unknown';
       const newUntil = member.status?.until ? new Date(member.status.until * 1000) : null;
       const newUntilEpoch = newUntil ? Math.floor(newUntil.getTime() / 1000) : null;
-
       const [existing] = await new Promise((resolve, reject) => {
         db.query(
-          'SELECT current_status, current_until, claimed_by FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
-          [name, myFactionId],
+          'SELECT status, timer, claimed_by FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
+          [name, req.session.factionId],
           (err, results) => {
             if (err) return reject(err);
             resolve(results);
@@ -268,27 +229,27 @@ exports.fetchEnemyLive = async (req, res) => {
         );
       });
 
-      const statusChanged = !existing || existing.current_status !== newStatus;
-      const untilChanged = !existing || (newUntil && existing.current_until?.getTime() !== newUntil.getTime());
+      const statusChanged = !existing || existing.status !== newStatus;
+      const untilChanged = !existing || (newUntil && existing.timer?.getTime() !== newUntil.getTime());
 
       if (statusChanged || untilChanged) {
         db.query(`
           INSERT INTO enemy_faction_members (
-            name, tornid, factionid, current_status, current_until, war_type, war_with_factionid, changedate
+            name, tornid, factionid, status, timer, war_with_factionid, changedate
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+          VALUES (?, ?, ?, ?, ?, ?, NOW())
           ON DUPLICATE KEY UPDATE
-            current_status = VALUES(current_status),
-            current_until = VALUES(current_until),
+            status = VALUES(status),
+            timer = VALUES(timer),
             changedate = NOW()
-        `, [name, tornid, factionid, newStatus, newUntil, warType, myFactionId], (err) => {
+        `, [name, tornid, req.session.enemyid, newStatus, newUntil, req.session.factionId], (err) => {
           if (err) console.error('DB update error:', err);
         });
 
         updates.push({
           name,
           tornid,
-          factionid,
+          factionId: req.session.id,
           statusState: newStatus,
           statusUntil: newUntilEpoch
         });
@@ -298,13 +259,13 @@ exports.fetchEnemyLive = async (req, res) => {
       if (existing?.claimed_by && !isClaimable(newStatus, newUntilEpoch)) {
         db.query(
           'UPDATE enemy_faction_members SET claimed_by = NULL WHERE name = ? AND war_with_factionid = ?',
-          [name, myFactionId]
+          [name, req.session.factionId]
         );
       }
     }
 
     if (updates.length > 0) {
-      io.to(`faction_${myFactionId}`).emit('enemyStatusUpdate', {
+      io.to(`faction_${req.session.factionId}`).emit('enemyStatusUpdate', {
         updates,
         lastUpdated: Math.floor(Date.now() / 1000)
       });
@@ -326,7 +287,7 @@ exports.claim = (req, res) => {
   const io = req.app.get('io');
 
   db.query(
-    'SELECT current_status, current_until FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
+    'SELECT status, timer FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
     [name, myFactionId],
     (err, results) => {
       if (err || results.length === 0) {
@@ -335,8 +296,8 @@ exports.claim = (req, res) => {
       }
 
       const member = results[0];
-      const status = member.current_status;
-      const statusUntil = member.current_until ? Math.floor(new Date(member.current_until).getTime() / 1000) : null;
+      const status = member.status;
+      const statusUntil = member.timer ? Math.floor(new Date(member.timer).getTime() / 1000) : null;
 
       const canClaim = isClaimable(status, statusUntil);
 
@@ -390,7 +351,7 @@ exports.cancelClaim = (req, res) => {
 
       // Fetch updated status and timer
       db.query(
-        `SELECT current_status AS status, current_until AS statusUntil 
+        `SELECT status AS status, timer AS statusUntil 
          FROM enemy_faction_members 
          WHERE name = ?`,
         [name],
