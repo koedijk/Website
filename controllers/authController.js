@@ -149,7 +149,7 @@ exports.getDashboard = async (req, res) => {
 
   try {
     const apiKey = isHex(req.session.apiKey) ? decrypt(req.session.apiKey) : req.session.apiKey;
-    const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyid);
+    const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyId);
     const enemyMembersRaw = Object.values(enemy.members);
 
     const claims = await new Promise((resolve, reject) => {
@@ -200,12 +200,11 @@ exports.fetchEnemyLive = async (req, res) => {
   if (!req.session || !req.session.apiKey) {
     return res.status(401).send('Session expired');
   }
-
   const encryptedKey = req.session.apiKey;
   const apiKey = isHex(encryptedKey) ? decrypt(encryptedKey) : encryptedKey;
   try {
   
-    const enemyData = await apicalls.getFactionBasic(apiKey, req.session.enemyid);
+    const enemyData = await apicalls.getFactionBasic(apiKey, req.session.enemyId);
     const updates = Object.values(enemyData.members).map(member => {
     const rawDescription = member.status?.description || 'Unknown';
 	  const status = shortenDestination(rawDescription);
@@ -213,9 +212,8 @@ exports.fetchEnemyLive = async (req, res) => {
       return {
         name: member.name,
         tornid: member.id,
-        enemyId: req.session.enemyId,
-        status,
         statusState,
+        status,
         statusUntil: member.status?.until
       };
     });
@@ -234,9 +232,11 @@ exports.fetchEnemyLive = async (req, res) => {
             `, [
         member.name,
         member.tornid,
-        member.factionid,
-        member.status,
-        member.statusUntil
+        req.session.enemyId,
+        member.statusState,
+        member.statusUntil,
+        req.session.factionId
+
       ], (err) => {
         if (err) console.error('DB insert error:' ,err);
       });
@@ -260,12 +260,12 @@ exports.fetchEnemyLive = async (req, res) => {
 exports.claim = (req, res) => {
   const { name } = req.body;
   const claimedBy = req.session.tornName;
-  const myFactionId = req.session.factionId;
   const io = req.app.get('io');
-
+  console.log(name);
+  console.log(req.session.factionId);
   db.query(
     'SELECT * FROM enemy_faction_members WHERE name = ? AND war_with_factionid = ?',
-    [name, myFactionId],
+    [name, req.session.factionId],
     (err, results) => {
       if (err || results.length === 0) {
         console.error('Claim lookup error:', err);
@@ -287,7 +287,7 @@ exports.claim = (req, res) => {
 
       db.query(
         'UPDATE enemy_faction_members SET claimed_by = ? WHERE name = ? AND war_with_factionid = ?',
-        [claimedBy, name, myFactionId],
+        [claimedBy, name, req.session.factionId],
         (err) => {
           if (err) {
             console.error('Claim update error:', err);
