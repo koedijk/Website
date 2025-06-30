@@ -59,7 +59,7 @@ io.use((socket, next) => {
 });
 
 app.use('/public/dashboard.js', (req, res) => {
-  res.status(403).send('Access denied');
+ res.status(403).send('Access denied');
 });
 
 

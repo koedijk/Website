@@ -1,14 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/dashboard.js" defer></script>
+  <script>
+  window.currentUserName = "<%= tornName %>";
+</script>
   <style>
-    .status-okay { color: #678c00; font-weight: bold; }
-    .status-hospital { color: #e03131; font-weight: bold; }
-    .status-other { color: #0c8599; font-weight: bold; }
+    .status-okay {
+      color: #678c00;
+      font-weight: bold;
+    }
+
+    .status-hospital {
+      color: #e03131;
+      font-weight: bold;
+    }
+
+    .status-other {
+      color: #0c8599;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -19,9 +34,15 @@
     </p>
 
     <h1>Welcome to Your Dashboard</h1>
-    <p><strong>Name:</strong> <%= tornName %></p>
-    <p><strong>Torn ID:</strong> <%= tornId %></p>
-    <p><strong>Faction ID:</strong> <%= factionId %></p>
+    <p><strong>Name:</strong>
+      <%= tornName %>
+    </p>
+    <p><strong>Torn ID:</strong>
+      <%= tornId %>
+    </p>
+    <p><strong>Faction ID:</strong>
+      <%= factionId %>
+    </p>
 
     <div class="logout">
       <a href="/auth/logout">Logout</a>
@@ -38,17 +59,29 @@
       </tr>
     </thead>
     <tbody>
-      <% enemyMembers.forEach(member => { %>
-        <tr>
-          <td><%= member.name %></td>
-          <td class="<%= member.status === 'Okay' ? 'status-okay' : (member.status.includes('Hospital') ? 'status-hospital' : 'status-other') %>">
+      <% enemyMembers.forEach(member=> { %>
+        <tr data-tornid="<%= member.tornid %>">
+          <td class="name">
+            <%= member.name %>
+          </td>
+          <td
+            class="status <%= member.status === 'Okay' ? 'status-okay' : (member.status.includes('Hospital') ? 'status-hospital' : 'status-other') %>">
             <%= member.status %>
           </td>
           <td><span class="timer" data-until="<%= member.statusUntil %>">--</span></td>
-          <td><%= member.claimedBy || '--' %></td>
+          <td class="claimed-by">
+            <%= member.claimedBy || '--' %>
+          </td>
+          <td>
+            <button class="claim-btn" data-tornid="<%= member.tornid %>">
+              <%= member.claimedBy===tornName ? 'Cancel' : 'Claim' %>
+            </button>
+          </td>
         </tr>
-      <% }) %>
+
+        <% }) %>
     </tbody>
   </table>
 </body>
+
 </html>

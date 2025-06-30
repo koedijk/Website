@@ -22,6 +22,11 @@ const shortenDestination = (desc) => {
   if (hospitalMatch && map[hospitalMatch[1]]) {
     return `Hospital - In ${map[hospitalMatch[1]]}`;
   }
+  if (/in hospital for \d+ (mins?|secs?)/i.test(desc)) {
+  return 'Hospital';
+  }
+
+
 
   if (desc.includes('Returning to Torn from')) {
     const match = desc.match(/Returning to Torn from ([A-Za-z ]+)/i);
@@ -41,7 +46,6 @@ const shortenDestination = (desc) => {
   } else if (fromMatch && map[fromMatch[1]]) {
     return `Return from - ${map[fromMatch[1]]}`;
   }
-
   return desc;
 };
 
@@ -208,6 +212,103 @@ exports.getDashboard = async (req, res) => {
     res.status(500).send('Failed to load dashboard');
   }
 };
+
+exports.getEnemyStatus = async (req, res) => {
+  if (!req.session || !req.session.apiKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const apiKey = isHex(req.session.apiKey) ? decrypt(req.session.apiKey) : req.session.apiKey;
+    const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyId);
+    const enemyMembersRaw = Object.values(enemy.members);
+
+    const claims = await new Promise((resolve, reject) => {
+      db.query(
+        `SELECT name, claimed_by FROM enemy_faction_members WHERE war_with_factionid = ?`,
+        [req.session.factionId],
+        (err, results) => {
+          if (err) return reject(err);
+          const map = {};
+          results.forEach(row => {
+            map[row.name] = row.claimed_by;
+          });
+          resolve(map);
+        }
+      );
+    });
+
+    const enemyMembers = enemyMembersRaw.map(member => {
+      const rawDescription = member.status?.description || 'Unknown';
+      const status = shortenDestination(rawDescription);
+      const statusState = member.status?.state || 'Unknown';
+      return {
+        name: member.name,
+        tornid: member.id,
+        status,
+        statusState,
+        statusUntil: member.status?.until ? parseInt(member.status.until, 10) : null,
+        claimedBy: claims[member.name] || null
+      };
+    });
+
+    res.json({ enemyMembers });
+  } catch (error) {
+    console.error('Error fetching enemy status:', error);
+    res.status(500).json({ error: 'Failed to fetch enemy status' });
+  }
+};
+
+exports.claimEnemy = async (req, res) => {
+  if (!req.session || !req.session.tornName || !req.body.tornid) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const tornid = req.body.tornid;
+  const factionId = req.session.factionId;
+  const username = req.session.tornName;
+
+  try {
+    // Check current claim status
+    const [results] = await db.promise().query(
+      'SELECT claimed_by FROM enemy_faction_members WHERE tornid = ? AND war_with_factionid = ?',
+      [tornid, factionId]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Enemy not found' });
+    }
+
+    const currentClaim = results[0].claimed_by;
+
+    if (!currentClaim) {
+      // Not claimed yet — claim it
+      await db.promise().query(
+        'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND war_with_factionid = ?',
+        [username, tornid, factionId]
+      );
+      return res.json({ success: true, claimedBy: username });
+    }
+
+    if (currentClaim === username) {
+      // Already claimed by this user — unclaim
+      await db.promise().query(
+        'UPDATE enemy_faction_members SET claimed_by = NULL WHERE tornid = ? AND war_with_factionid = ?',
+        [tornid, factionId]
+      );
+      return res.json({ success: true, claimedBy: null });
+    }
+
+    // Claimed by someone else
+    return res.status(403).json({ error: 'Already claimed by another user' });
+
+  } catch (err) {
+    console.error('Claim error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+
 // Logout
 exports.logout = (req, res) => {
   req.session.destroy((err) => {
