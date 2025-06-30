@@ -1,200 +1,97 @@
-/* === Base Styles === */
+/* General Layout */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9f9f9;
   margin: 0;
-  padding: 2rem 1rem;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-/* === Dashboard Container === */
-.dashboard {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 10px;
-  max-width: 1200px;
-  width: 100%;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-}
-
-/* === Typography === */
-h1,
-h2 {
-  color: #2c3e50;
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-p {
-  margin: 0.5rem 0;
-  color: #555;
-}
-
-/* === Tables === */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-  font-size: 0.95rem;
-}
-
-th,
-td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border: 1px solid #e0e0e0;
-}
-
-th {
-  background-color: #f0f0f0;
-  font-weight: 600;
+  padding: 20px;
+  background-color: #f8f9fa;
   color: #333;
 }
 
-tr:hover {
-  background-color: #f9f9f9;
-}
-
-/* === Buttons === */
-button {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.9rem;
-  line-height: 1;
-  margin: 0;
-  vertical-align: middle;
-  display: inline-block;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-.faction-block {
-  flex: 1;
-  min-width: 300px;
-  margin-bottom: 2rem;
-  border: 1px solid #eaeaea;
+.dashboard {
+  max-width: 900px;
+  margin: 0 auto;
+  background-color: #fff;
+  padding: 25px;
   border-radius: 8px;
-  padding: 1rem;
-  background-color: #fafafa;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.faction-block h2 {
-  font-size: 1.25rem;
-  margin-bottom: 1rem;
-  color: #34495e;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 0.5rem;
+.dashboard h1 {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
-/* === Logout Button === */
 .logout {
-  margin-top: 2rem;
   text-align: right;
+  margin-top: 20px;
 }
 
 .logout a {
+  background-color: #dc3545;
   color: white;
-  background-color: #d9534f;
-  padding: 0.5rem 1rem;
+  padding: 8px 16px;
   text-decoration: none;
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  font-weight: bold;
 }
 
 .logout a:hover {
-  background-color: #c9302c;
+  background-color: #c82333;
 }
 
-/* === Utility === */
-.api-key-container {
-  display: flex;
-  align-items: center;
+/* Table Styling */
+.Enemies-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 30px;
 }
 
-#factionLastUpdated,
-#enemyLastUpdated {
-  text-align: right;
-  font-size: 0.85rem;
-  color: #888;
+.Enemies-table th,
+.Enemies-table td {
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  text-align: left;
 }
 
-/* === Enemy Faction Row Styling === */
-.enemy-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 0.5rem 0;
+.Enemies-table th {
+  background-color: #e9ecef;
+  font-weight: bold;
 }
 
-.enemy-info {
-  flex: 1;
-  display: flex;
-  gap: 2rem;
-  align-items: center;
+.Enemies-table tr:nth-child(even) {
+  background-color: #f1f3f5;
 }
 
-.enemy-action {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.Enemies-table tr:hover {
+  background-color: #e2e6ea;
 }
 
-.enemy-action form {
-  margin: 0;
-}
-
-.claimed-by,
-.claim-action {
-  text-align: center;
-  white-space: nowrap;
-}
-#lastUpdated {
-  text-align: right;
-  font-size: 0.9rem;
-  color: #666;
-}
+/* Status Colors */
 .status-okay {
-  color: #678C00;
+  color: #678c00;
   font-weight: bold;
 }
 
 .status-hospital {
-  color: #E03131;
+  color: #e03131;
   font-weight: bold;
 }
 
 .status-other {
-  color: #0C8599;
+  color: #0c8599;
   font-weight: bold;
 }
 
-.timer span.countdown {
-  color: #E03131;
-  font-weight: bold;
-}
-th.sortable::after {
-  content: " ⇅";
-  font-size: 0.8em;
-  color: #aaa;
-  margin-left: 5px;
+/* Legend Styling */
+.status-legend {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f1f3f5;
+  border-radius: 6px;
+  font-size: 0.95rem;
 }
 
-th.sortable.asc::after {
-  content: " ↑";
-  color: #000;
-}
-
-th.sortable.desc::after {
-  content: " ↓";
-  color: #000;
+.status-legend span {
+  display: inline-block;
+  margin-right: 20px;
 }
