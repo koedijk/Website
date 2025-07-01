@@ -21,10 +21,13 @@ document.addEventListener('click', async (e) => {
         if (result.claimedBy) {
           claimedByEl.textContent = result.claimedBy;
           button.textContent = 'Cancel';
+          button.classList.add('cancel'); // ✅ Add this line
         } else {
           claimedByEl.textContent = '--';
           button.textContent = 'Claim';
+          button.classList.remove('cancel'); // ✅ And this for unclaim
         }
+
       } else {
         alert(result.error || 'Failed to claim');
       }
@@ -141,7 +144,7 @@ setInterval(() => {
 setInterval(() => {
   fetchAndUpdateEnemyStatus();
   updateClock();
-} , 10000); // every 10 seconds
+}, 10000); // every 10 seconds
 
 
 window.onload = () => {

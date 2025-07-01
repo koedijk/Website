@@ -34,7 +34,7 @@ const shortenDestination = (desc) => {
       return `Return from - ${map[match[1]]}`;
     }
   }
-
+ 
   const toMatch = desc.match(/to ([A-Za-z ]+)/i);
   const inMatch = desc.match(/in ([A-Za-z ]+)/i);
   const fromMatch = desc.match(/from ([A-Za-z ]+)/i);
@@ -48,6 +48,7 @@ const shortenDestination = (desc) => {
   }
   return desc;
 };
+
 
 
 exports.getLogin = (req, res) => {
