@@ -1,32 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/js/dashboard.js" defer></script>
   <script>
-  window.currentUserName = "<%= tornName %>";
-</script>
+    window.currentUserName = "<%= tornName %>";
+  </script>
   <style>
     .status-okay {
       color: #678c00;
       font-weight: bold;
     }
-
     .status-hospital {
       color: #e03131;
       font-weight: bold;
     }
-
     .status-other {
       color: #0c8599;
       font-weight: bold;
     }
   </style>
 </head>
-
 <body data-faction-id="<%= factionId %>">
   <div class="dashboard">
     <p id="lastUpdated" style="text-align:right; font-size:0.9rem; color:#666;">
@@ -34,15 +31,9 @@
     </p>
 
     <h1>Welcome to Your Dashboard</h1>
-    <p><strong>Name:</strong>
-      <%= tornName %>
-    </p>
-    <p><strong>Torn ID:</strong>
-      <%= tornId %>
-    </p>
-    <p><strong>Faction ID:</strong>
-      <%= factionId %>
-    </p>
+    <p><strong>Name:</strong> <%= tornName %></p>
+    <p><strong>Torn ID:</strong> <%= tornId %></p>
+    <p><strong>Faction ID:</strong> <%= factionId %></p>
 
     <div class="logout">
       <a href="/auth/logout">Logout</a>
@@ -56,32 +47,42 @@
         <th>Status</th>
         <th>Timer</th>
         <th>Claimed By</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
-      <% enemyMembers.forEach(member=> { %>
+      <% const now = Math.floor(Date.now() / 1000); %>
+      <% enemyMembers.forEach(member => { 
+           const isTooEarly = member.statusUntil && (member.statusUntil - now > 300);
+           const isTraveling = member.statusState === 'Traveling';
+           const isUnavailable = isTooEarly || isTraveling;
+           const isClaimedByUser = member.claimedBy === tornName;
+           const isClaimedByOther = member.claimedBy && !isClaimedByUser;
+      %>
         <tr data-tornid="<%= member.tornid %>">
-          <td class="name">
-            <%= member.name %>
-          </td>
-          <td
-            class="status <%= member.status === 'Okay' ? 'status-okay' : (member.status.includes('Hospital') ? 'status-hospital' : 'status-other') %>">
+          <td class="name"><%= member.name %></td>
+          <td class="status <%= member.status === 'Okay' ? 'status-okay' : (member.status.includes('Hospital') ? 'status-hospital' : 'status-other') %>">
             <%= member.status %>
           </td>
           <td><span class="timer" data-until="<%= member.statusUntil %>">--</span></td>
-          <td class="claimed-by">
-            <%= member.claimedBy || '--' %>
-          </td>
+          <td class="claimed-by"><%= member.claimedBy || '--' %></td>
           <td>
-            <button class="claim-btn" data-tornid="<%= member.tornid %>">
-              <%= member.claimedBy===tornName ? 'Cancel' : 'Claim' %>
+            <button
+              class="claim-btn <%= isClaimedByUser ? 'cancel' : '' %>"
+              data-tornid="<%= member.tornid %>"
+              <%= isUnavailable || isClaimedByOther ? 'disabled' : '' %>>
+              <%= isUnavailable
+                  ? 'Unavailable'
+                  : (isClaimedByUser
+                      ? 'Cancel'
+                      : (isClaimedByOther
+                          ? 'Claimed'
+                          : 'Claim')) %>
             </button>
           </td>
         </tr>
-
-        <% }) %>
+      <% }) %>
     </tbody>
   </table>
 </body>
-
 </html>

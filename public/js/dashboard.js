@@ -1,3 +1,26 @@
+const socket = io();
+
+socket.on('claimUpdate', ({ tornid, claimedBy }) => {
+  const row = document.querySelector(`[data-tornid="${tornid}"]`);
+  if (!row) return;
+  const claimedByEl = row.querySelector('.claimed-by');
+  const buttonEl = row.querySelector('.claim-btn');
+  claimedByEl.textContent = claimedBy || '--';
+  if (buttonEl) {
+    buttonEl.classList.remove('cancel');
+    buttonEl.disabled = false;
+    if (claimedBy === window.currentUserName) {
+      buttonEl.textContent = 'Cancel';
+      buttonEl.classList.add('cancel');
+    } else if (claimedBy) {
+      buttonEl.textContent = 'Claimed';
+      buttonEl.disabled = true;
+    } else {
+      buttonEl.textContent = 'Claim';
+    }
+  }
+});
+
 document.addEventListener('click', async (e) => {
   if (e.target.classList.contains('claim-btn')) {
     const button = e.target;
@@ -21,13 +44,10 @@ document.addEventListener('click', async (e) => {
         if (result.claimedBy) {
           claimedByEl.textContent = result.claimedBy;
           button.textContent = 'Cancel';
-          button.classList.add('cancel'); // ✅ Add this line
         } else {
           claimedByEl.textContent = '--';
           button.textContent = 'Claim';
-          button.classList.remove('cancel'); // ✅ And this for unclaim
         }
-
       } else {
         alert(result.error || 'Failed to claim');
       }
@@ -95,6 +115,22 @@ async function fetchAndUpdateEnemyStatus() {
       }
     });
 
+function autoUnclaimEnemy(tornid, row) {
+  const claimedByEl = row.querySelector('.claimed-by');
+  const buttonEl = row.querySelector('.claim-btn');
+  claimedByEl.textContent = '--';
+  if (buttonEl) {
+    buttonEl.textContent = 'Claim';
+    buttonEl.classList.remove('cancel');
+    buttonEl.disabled = true;
+  }
+  fetch('/auth/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tornid })
+  });
+}
+
     updateTimers();
   } catch (error) {
     console.error('[Polling] Failed to fetch enemy status:', error);
@@ -137,6 +173,22 @@ function updateClock() {
 }
 
 setInterval(() => {
+function autoUnclaimEnemy(tornid, row) {
+  const claimedByEl = row.querySelector('.claimed-by');
+  const buttonEl = row.querySelector('.claim-btn');
+  claimedByEl.textContent = '--';
+  if (buttonEl) {
+    buttonEl.textContent = 'Claim';
+    buttonEl.classList.remove('cancel');
+    buttonEl.disabled = true;
+  }
+  fetch('/auth/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tornid })
+  });
+}
+
   updateTimers();
   //updateClock();
 }, 1000);
@@ -144,10 +196,26 @@ setInterval(() => {
 setInterval(() => {
   fetchAndUpdateEnemyStatus();
   updateClock();
-}, 10000); // every 10 seconds
+} , 10000); // every 10 seconds
 
 
 window.onload = () => {
+function autoUnclaimEnemy(tornid, row) {
+  const claimedByEl = row.querySelector('.claimed-by');
+  const buttonEl = row.querySelector('.claim-btn');
+  claimedByEl.textContent = '--';
+  if (buttonEl) {
+    buttonEl.textContent = 'Claim';
+    buttonEl.classList.remove('cancel');
+    buttonEl.disabled = true;
+  }
+  fetch('/auth/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tornid })
+  });
+}
+
   updateTimers();
   fetchAndUpdateEnemyStatus();
   updateClock();

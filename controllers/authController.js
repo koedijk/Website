@@ -34,7 +34,7 @@ const shortenDestination = (desc) => {
       return `Return from - ${map[match[1]]}`;
     }
   }
- 
+
   const toMatch = desc.match(/to ([A-Za-z ]+)/i);
   const inMatch = desc.match(/in ([A-Za-z ]+)/i);
   const fromMatch = desc.match(/from ([A-Za-z ]+)/i);
@@ -264,10 +264,11 @@ exports.claimEnemy = async (req, res) => {
   if (!req.session || !req.session.tornName || !req.body.tornid) {
     return res.status(400).json({ error: 'Invalid request' });
   }
-
   const tornid = req.body.tornid;
   const factionId = req.session.factionId;
   const username = req.session.tornName;
+  const io = req.app.get('io');
+
 
   try {
     // Check current claim status
@@ -288,6 +289,8 @@ exports.claimEnemy = async (req, res) => {
         'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND war_with_factionid = ?',
         [username, tornid, factionId]
       );
+	  
+  io.emit('claimUpdate', { tornid, claimedBy: username });
       return res.json({ success: true, claimedBy: username });
     }
 
@@ -297,6 +300,7 @@ exports.claimEnemy = async (req, res) => {
         'UPDATE enemy_faction_members SET claimed_by = NULL WHERE tornid = ? AND war_with_factionid = ?',
         [tornid, factionId]
       );
+  io.emit('claimUpdate', { tornid, claimedBy: null });
       return res.json({ success: true, claimedBy: null });
     }
 
