@@ -67,6 +67,7 @@ async function fetchAndUpdateEnemyStatus() {
     const members = data.enemyMembers;
 
     members.forEach(member => {
+    const now = Math.floor(Date.now() / 1000);
       const row = document.querySelector(`[data-tornid="${member.tornid}"]`);
       if (!row) return;
 
@@ -99,10 +100,12 @@ async function fetchAndUpdateEnemyStatus() {
       }
 
       // Update claim button
+    const isTooEarly = member.statusUntil && (member.statusUntil - now > 300);
+    const isTraveling = member.statusState === 'Traveling';
+    const isUnavailable = isTooEarly || isTraveling;
       if (buttonEl) {
         buttonEl.classList.remove('cancel');
-        buttonEl.disabled = false;
-
+        buttonEl.style.display = (isUnavailable || (member.claimedBy && member.claimedBy !== currentUserName)) ? 'none' : '';
         if (member.claimedBy === currentUserName) {
           buttonEl.textContent = 'Cancel';
           buttonEl.classList.add('cancel');
@@ -114,22 +117,6 @@ async function fetchAndUpdateEnemyStatus() {
         }
       }
     });
-
-function autoUnclaimEnemy(tornid, row) {
-  const claimedByEl = row.querySelector('.claimed-by');
-  const buttonEl = row.querySelector('.claim-btn');
-  claimedByEl.textContent = '--';
-  if (buttonEl) {
-    buttonEl.textContent = 'Claim';
-    buttonEl.classList.remove('cancel');
-    buttonEl.disabled = true;
-  }
-  fetch('/auth/claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tornid })
-  });
-}
 
     updateTimers();
   } catch (error) {
@@ -173,22 +160,6 @@ function updateClock() {
 }
 
 setInterval(() => {
-function autoUnclaimEnemy(tornid, row) {
-  const claimedByEl = row.querySelector('.claimed-by');
-  const buttonEl = row.querySelector('.claim-btn');
-  claimedByEl.textContent = '--';
-  if (buttonEl) {
-    buttonEl.textContent = 'Claim';
-    buttonEl.classList.remove('cancel');
-    buttonEl.disabled = true;
-  }
-  fetch('/auth/claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tornid })
-  });
-}
-
   updateTimers();
   //updateClock();
 }, 1000);
@@ -200,22 +171,6 @@ setInterval(() => {
 
 
 window.onload = () => {
-function autoUnclaimEnemy(tornid, row) {
-  const claimedByEl = row.querySelector('.claimed-by');
-  const buttonEl = row.querySelector('.claim-btn');
-  claimedByEl.textContent = '--';
-  if (buttonEl) {
-    buttonEl.textContent = 'Claim';
-    buttonEl.classList.remove('cancel');
-    buttonEl.disabled = true;
-  }
-  fetch('/auth/claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tornid })
-  });
-}
-
   updateTimers();
   fetchAndUpdateEnemyStatus();
   updateClock();

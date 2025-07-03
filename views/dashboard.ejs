@@ -70,7 +70,7 @@
             <button
               class="claim-btn <%= isClaimedByUser ? 'cancel' : '' %>"
               data-tornid="<%= member.tornid %>"
-              <%= isUnavailable || isClaimedByOther ? 'disabled' : '' %>>
+              <%= isUnavailable || isClaimedByOther ? 'style="display:none;"' : '' %>
               <%= isUnavailable
                   ? 'Unavailable'
                   : (isClaimedByUser

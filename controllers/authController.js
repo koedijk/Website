@@ -23,7 +23,7 @@ const shortenDestination = (desc) => {
     return `Hospital - In ${map[hospitalMatch[1]]}`;
   }
   if (/in hospital for \d+ (mins?|secs?)/i.test(desc)) {
-  return 'Hospital';
+    return 'Hospital';
   }
 
 
@@ -112,12 +112,12 @@ exports.postLogin = async (req, res) => {
     const playername = basicinfo.name;
 
     await pool.query(
-          `INSERT INTO users (tornid, name, factionid, api_key)
+      `INSERT INTO users (tornid, name, factionid, api_key)
           VALUES (?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
           name = VALUES(name),
           api_key = VALUES(api_key)`,
-          [tornid, playername, factionId, api_key]
+      [tornid, playername, factionId, api_key]
     );
     await handleLogin(req, res, playername, factionId, tornid, api_key, pool);
 
@@ -169,11 +169,9 @@ exports.getDashboard = async (req, res) => {
     const apiKey = isHex(req.session.apiKey) ? decrypt(req.session.apiKey) : req.session.apiKey;
     const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyId);
     const enemyMembersRaw = Object.values(enemy.members);
-
     const claims = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT name, claimed_by FROM enemy_faction_members
-         WHERE war_with_factionid = ?`,
+        `SELECT name, claimed_by FROM enemy_faction_members WHERE enemyid = ?`,
         [req.session.factionId],
         (err, results) => {
           if (err) return reject(err);
@@ -209,7 +207,7 @@ exports.getDashboard = async (req, res) => {
       enemyFactionName: req.session.enemyname
     });
   } catch (error) {
-    console.error('Dashboard error:');
+    console.error('Dashboard error:' + error);
     res.status(500).send('Failed to load dashboard');
   }
 };
@@ -223,10 +221,9 @@ exports.getEnemyStatus = async (req, res) => {
     const apiKey = isHex(req.session.apiKey) ? decrypt(req.session.apiKey) : req.session.apiKey;
     const enemy = await apicalls.getFactionBasic(apiKey, req.session.enemyId);
     const enemyMembersRaw = Object.values(enemy.members);
-
     const claims = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT name, claimed_by FROM enemy_faction_members WHERE war_with_factionid = ?`,
+        `SELECT name, claimed_by FROM enemy_faction_members WHERE enemyid = ?`,
         [req.session.factionId],
         (err, results) => {
           if (err) return reject(err);
@@ -243,6 +240,7 @@ exports.getEnemyStatus = async (req, res) => {
       const rawDescription = member.status?.description || 'Unknown';
       const status = shortenDestination(rawDescription);
       const statusState = member.status?.state || 'Unknown';
+      enemydbupdate(member.id,member.name,req.session.enemyId,member.status.state,member.status.until,req.session.factionId);
       return {
         name: member.name,
         tornid: member.id,
@@ -273,7 +271,7 @@ exports.claimEnemy = async (req, res) => {
   try {
     // Check current claim status
     const [results] = await db.promise().query(
-      'SELECT claimed_by FROM enemy_faction_members WHERE tornid = ? AND war_with_factionid = ?',
+      'SELECT claimed_by FROM enemy_faction_members WHERE tornid = ? AND enemyid = ?',
       [tornid, factionId]
     );
 
@@ -282,25 +280,24 @@ exports.claimEnemy = async (req, res) => {
     }
 
     const currentClaim = results[0].claimed_by;
-
     if (!currentClaim) {
       // Not claimed yet — claim it
       await db.promise().query(
-        'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND war_with_factionid = ?',
+        'UPDATE enemy_faction_members SET claimed_by = ? WHERE tornid = ? AND enemyid = ?',
         [username, tornid, factionId]
       );
-	  
-  io.emit('claimUpdate', { tornid, claimedBy: username });
+
+      io.emit('claimUpdate', { tornid, claimedBy: username });
       return res.json({ success: true, claimedBy: username });
     }
 
     if (currentClaim === username) {
       // Already claimed by this user — unclaim
       await db.promise().query(
-        'UPDATE enemy_faction_members SET claimed_by = NULL WHERE tornid = ? AND war_with_factionid = ?',
+        'UPDATE enemy_faction_members SET claimed_by = NULL WHERE tornid = ? AND enemyid = ?',
         [tornid, factionId]
       );
-  io.emit('claimUpdate', { tornid, claimedBy: null });
+      io.emit('claimUpdate', { tornid, claimedBy: null });
       return res.json({ success: true, claimedBy: null });
     }
 
@@ -325,3 +322,16 @@ exports.logout = (req, res) => {
     res.render('login', { error: null });
   });
 };
+
+async function enemydbupdate(tornid,name,factionId,status,timer,enemyId)
+{
+  await db.promise().query(`
+    INSERT INTO enemy_faction_members (tornid, name, factionId, status, timer, enemyId)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      name = VALUES(name),
+      status = VALUES(status),
+      timer = VALUES(timer)
+  `, [tornid, name, factionId, status, timer, enemyId]);
+
+}
