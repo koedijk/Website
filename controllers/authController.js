@@ -22,7 +22,7 @@ const shortenDestination = (desc) => {
   if (hospitalMatch && map[hospitalMatch[1]]) {
     return `Hospital - In ${map[hospitalMatch[1]]}`;
   }
-  if (/in hospital for \d+ (mins?|secs?)/i.test(desc)) {
+  if (/in hospital for \d+ (hrs?|mins?|secs?)/i.test(desc)) {
     return 'Hospital';
   }
 
